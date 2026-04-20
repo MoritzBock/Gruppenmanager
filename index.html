@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gruppen- & Klassenmanager</title>
+    <style>
+        :root { --primary: #0056b3; --bg: #f4f7f6; --card-bg: #ffffff; --text: #333; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg); color: var(--text); padding: 20px; }
+        .container { max-width: 1000px; margin: auto; display: grid; grid-template-columns: 1fr 2fr; gap: 20px; }
+        .card { background: var(--card-bg); padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h2, h3 { color: var(--primary); margin-top: 0; }
+        textarea { width: 100%; height: 120px; box-sizing: border-box; padding: 10px; margin-bottom: 5px; border: 1px solid #ccc; border-radius: 4px; }
+        button { background-color: var(--primary); color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; width: 100%; font-size: 16px; margin-bottom: 5px; transition: 0.2s; }
+        button:hover { background-color: #004494; }
+        button.sec { background-color: #6c757d; }
+        button.sec:hover { background-color: #5a6268; }
+        button.danger { background-color: #dc3545; width: auto; padding: 5px 10px; font-size: 12px; }
+        select, input[type="number"], input[type="text"] { width: 100%; padding: 8px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .student-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+        .student-badge { background: #e9ecef; padding: 5px 10px; border-radius: 15px; cursor: pointer; font-size: 14px; user-select: none; transition: 0.2s; border: 1px solid transparent; }
+        .student-badge:hover { background: #d3d9df; }
+        .student-badge.absent { background: #ffcccc; color: #a00; text-decoration: line-through; border-color: #ff9999; }
+        .group-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .group-box { border: 1px solid #ddd; border-radius: 6px; padding: 15px; background: #fdfdfd; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .hidden { display: none !important; }
+        hr { border: 0; border-top: 1px solid #eee; margin: 20px 0; }
+        .expert-tag { color: var(--primary); font-weight: bold; font-size: 0.85em; }
+        .grid-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .flex-row { display: flex; gap: 10px; align-items: flex-end; margin-bottom: 10px; }
+        .checkbox-label { display: flex; align-items: center; gap: 8px; margin-bottom: 15px; font-weight: bold; cursor: pointer;}
+        .checkbox-label input { width: auto; margin: 0; }
+        .test-box { background: #f8f9fa; border: 1px dashed #adb5bd; padding: 15px; border-radius: 6px; margin-bottom: 15px; }
+        .alert-warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; padding: 12px; border-radius: 6px; margin-bottom: 20px; font-size: 14px; }
+        
+        /* Modal (Pop-up) Styles */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        .modal-content { background: white; padding: 25px; border-radius: 8px; max-width: 500px; width: 90%; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+        .modal-content h3 { margin-top: 0; color: #856404; display: flex; align-items: center; gap: 10px; }
+        .modal-content p { line-height: 1.5; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+
+<div id="warningModal" class="modal-overlay hidden">
+    <div class="modal-content">
+        <h3>⚠️ Hinweis zur Gruppengröße</h3>
+        <p id="modalText"></p>
+        <label class="checkbox-label" style="font-weight: normal; font-size: 14px; margin-bottom: 20px;">
+            <input type="checkbox" id="modalNeverShowCheckbox"> Meldung zukünftig nicht mehr als Pop-up anzeigen
+        </label>
+        <button onclick="closeModal()">Verstanden</button>
+    </div>
+</div>
+
+<div class="container">
+    <div class="card">
+        
+        <div style="margin-bottom: 15px; text-align: right;">
+            <label class="checkbox-label" style="font-weight: normal; font-size: 0.85em; color: #666; justify-content: flex-end; margin-bottom: 0;">
+                <input type="checkbox" onchange="document.getElementById('testModeDiv').classList.toggle('hidden', !this.checked)"> Test-Generator einblenden
+            </label>
+        </div>
+
+        <div id="testModeDiv" class="test-box hidden">
+            <h3 style="margin-top:0; font-size: 16px; color: #495057;">Dummy-Klasse generieren</h3>
+            <p style="font-size: 12px; color: #666; margin-top: 0;">Erstellt eine zufällige Liste.</p>
+            <div class="flex-row" style="margin-bottom: 0;">
+                <input type="number" id="dummyCount" placeholder="Anzahl Schüler" value="19" min="2" style="margin-bottom: 0;">
+                <button class="sec" style="width: auto; margin-bottom: 0;" onclick="generateDummies()">Generieren</button>
+            </div>
+        </div>
+
+        <h2>1. Klassenverwaltung</h2>
+        
+        <label>Gespeicherte Klassen:</label>
+        <div class="flex-row">
+            <select id="savedClassesSelect" onchange="loadClass()" style="margin-bottom: 0;">
+                <option value="">-- Klasse wählen --</option>
+            </select>
+            <button class="danger" onclick="deleteClass()" style="margin-bottom: 0;">Löschen</button>
+        </div>
+        <hr>
+
+        <label>Namensliste (Nachname, Vorname):</label>
+        <textarea id="rawInput" placeholder="Müller, Max&#10;Schmidt, Erika"></textarea>
+        
+        <button class="sec" style="background-color: #868e96; font-size: 13px; padding: 6px; margin-bottom: 15px;" onclick="clearInput()">Textfeld leeren (für einmalige Nutzung)</button>
+        
+        <div class="flex-row">
+            <input type="text" id="classNameInput" placeholder="Klassenname zum Speichern (z.B. 10a)" style="margin-bottom: 0;">
+            <button class="sec" style="width: auto; margin-bottom: 0;" onclick="saveClass()">Speichern</button>
+        </div>
+        
+        <button onclick="parseList()" style="margin-top: 15px;">Liste einlesen & starten</button>
+
+        <div id="controls" class="hidden">
+            <hr>
+            <h2>2. Modus wählen</h2>
+            <select id="mode" onchange="toggleMode()">
+                <option value="simple">Einfache Gruppen</option>
+                <option value="tandem">Tandems (2er-Gruppen)</option>
+                <option value="jigsaw">Gruppenpuzzle</option>
+                <option value="random">Zufallsauswahl (Personen)</option>
+            </select>
+
+            <div id="groupDiv">
+                <label id="labelNaming1">Gruppenbezeichnung:</label>
+                <select id="naming1" onchange="triggerLiveUpdate()">
+                    <option value="letters">Buchstaben (A, B, C...)</option>
+                    <option value="numbers">Zahlen (1, 2, 3...)</option>
+                </select>
+
+                <div id="naming2Div" class="hidden">
+                    <label>Bezeichnung Stammgruppen:</label>
+                    <select id="naming2" onchange="triggerLiveUpdate()">
+                        <option value="numbers">Zahlen (1, 2, 3...)</option>
+                        <option value="letters">Buchstaben (A, B, C...)</option>
+                    </select>
+                </div>
+
+                <div id="groupCountDiv">
+                    <label>Anzahl Gruppen/Themen:</label>
+                    <input type="number" id="groupCount" value="4" min="2" onchange="triggerLiveUpdate()">
+                </div>
+
+                <div id="minMaxDiv" class="grid-2col">
+                    <div>
+                        <label>Min. Personen:</label>
+                        <input type="number" id="minSize" value="2" min="1" onchange="triggerLiveUpdate()">
+                    </div>
+                    <div>
+                        <label>Max. Personen:</label>
+                        <input type="number" id="maxSize" value="6" min="2" onchange="triggerLiveUpdate()">
+                    </div>
+                </div>
+
+                <div id="targetDiv" class="hidden">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="showTargetCheckbox" onchange="triggerLiveUpdate()"> Ziel-Stammgruppe anzeigen
+                    </label>
+                </div>
+
+                <button onclick="reshuffleAndRender()">Gruppen auslosen (Neu mischen)</button>
+            </div>
+
+            <div id="randomDiv" class="hidden">
+                <label>Anzahl Personen:</label>
+                <input type="number" id="randomCount" value="1" min="1">
+                <button class="sec" onclick="selectRandom()">Zufallsauswahl ziehen</button>
+            </div>
+
+            <hr>
+            <h3 style="margin-bottom: 5px;">Anwesenheit (Live-Update)</h3>
+            <div id="studentCounter" style="font-size: 14px; font-weight: bold; color: var(--primary); margin-bottom: 10px;">0 / 0 anwesend</div>
+            <div id="studentRoster" class="student-list"></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Ergebnis</h2>
+        <div id="output">Noch keine Daten vorhanden. Füge eine Liste ein und klicke auf "Liste einlesen".</div>
+    </div>
+</div>
+
+<script>
+    let students = [];
+    let hasGenerated = false;
+    let showPopupWarning = true; 
+    let isBreachedState = false; 
+
+    // --- Modal-Logik ---
+
+    function showWarning(message) {
+        document.getElementById('modalText').innerHTML = message;
+        document.getElementById('modalNeverShowCheckbox').checked = false; 
+        document.getElementById('warningModal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+        const dontShow = document.getElementById('modalNeverShowCheckbox').checked;
+        if (dontShow) {
+            showPopupWarning = false;
+            const inlineCheckbox = document.getElementById('inlinePopupToggle');
+            if (inlineCheckbox) inlineCheckbox.checked = false;
+        }
+        document.getElementById('warningModal').classList.add('hidden');
+    }
+
+    function togglePopupPreference(isChecked) {
+        showPopupWarning = isChecked;
+    }
+
+    // --- Speicher-Logik & Reset ---
+
+    function clearInput() {
+        document.getElementById('rawInput').value = '';
+        document.getElementById('classNameInput').value = '';
+        document.getElementById('savedClassesSelect').value = '';
+        document.getElementById('controls').classList.add('hidden');
+        document.getElementById('output').innerHTML = 'Feld geleert. Bereit für eine neue einmalige Liste.';
+        students = [];
+    }
+
+    function saveClass() {
+        const name = document.getElementById('classNameInput').value.trim();
+        const content = document.getElementById('rawInput').value.trim();
+        if (!name || !content) {
+            alert("Bitte Klassenname und Liste ausfüllen!");
+            return;
+        }
+        let saved = JSON.parse(localStorage.getItem('gp_classes') || '{}');
+        saved[name] = content;
+        localStorage.setItem('gp_classes', JSON.stringify(saved));
+        updateClassSelect();
+        document.getElementById('savedClassesSelect').value = name;
+        alert(`Klasse "${name}" wurde gespeichert.`);
+    }
+
+    function updateClassSelect() {
+        const select = document.getElementById('savedClassesSelect');
+        const saved = JSON.parse(localStorage.getItem('gp_classes') || '{}');
+        const currentSelection = select.value;
+        select.innerHTML = '<option value="">-- Klasse wählen --</option>';
+        Object.keys(saved).sort().forEach(name => {
+            const opt = document.createElement('option');
+            opt.value = name;
+            opt.innerText = name;
+            select.appendChild(opt);
+        });
+        if (saved[currentSelection]) {
+            select.value = currentSelection;
+        }
+    }
+
+    function loadClass() {
+        const name = document.getElementById('savedClassesSelect').value;
+        if (!name) return;
+        const saved = JSON.parse(localStorage.getItem('gp_classes') || '{}');
+        document.getElementById('rawInput').value = saved[name];
+        document.getElementById('classNameInput').value = name;
+    }
+
+    function deleteClass() {
+        const name = document.getElementById('savedClassesSelect').value;
+        if (!name) return;
+        if (confirm(`Soll die Klasse "${name}" wirklich gelöscht werden?`)) {
+            let saved = JSON.parse(localStorage.getItem('gp_classes') || '{}');
+            delete saved[name];
+            localStorage.setItem('gp_classes', JSON.stringify(saved));
+            updateClassSelect();
+            clearInput();
+        }
+    }
+
+    function generateDummies() {
+        const count = parseInt(document.getElementById('dummyCount').value) || 24;
+        const maleFirst = ["Ben", "Paul", "Leon", "Finn", "Elias", "Jonas", "Luis", "Noah", "Felix", "Lukas", "Tim", "Max", "Jan", "Philipp", "Tom"];
+        const femaleFirst = ["Mia", "Emma", "Hannah", "Sofia", "Anna", "Emilia", "Lina", "Marie", "Lena", "Mila", "Lea", "Amelie", "Laura", "Julia", "Sarah"];
+        const lastNames = ["Müller", "Schmidt", "Schneider", "Fischer", "Weber", "Meyer", "Wagner", "Becker", "Schulz", "Hoffmann", "Schäfer", "Koch", "Bauer", "Richter", "Klein", "Wolf", "Schröder", "Neumann", "Schwarz", "Zimmermann"];
+
+        let dummyList = [];
+        for (let i = 0; i < count; i++) {
+            const isMale = i % 2 === 0;
+            const first = isMale ? maleFirst[Math.floor(Math.random() * maleFirst.length)] : femaleFirst[Math.floor(Math.random() * femaleFirst.length)];
+            const last = lastNames[Math.floor(Math.random() * lastNames.length)];
+            dummyList.push(`${last}, ${first}`);
+        }
+        
+        document.getElementById('rawInput').value = dummyList.join('\n');
+        document.getElementById('classNameInput').value = ''; 
+        document.getElementById('savedClassesSelect').value = ''; 
+        parseList(); 
+    }
+
+    window.onload = updateClassSelect;
+
+    function toggleMode() {
+        const mode = document.getElementById('mode').value;
+        const groupDiv = document.getElementById('groupDiv');
+        const randomDiv = document.getElementById('randomDiv');
+        const naming2Div = document.getElementById('naming2Div');
+        const labelNaming1 = document.getElementById('labelNaming1');
+        const targetDiv = document.getElementById('targetDiv');
+        const groupCountDiv = document.getElementById('groupCountDiv');
+        const minMaxDiv = document.getElementById('minMaxDiv');
+
+        if (mode === 'random') {
+            groupDiv.classList.add('hidden');
+            randomDiv.classList.remove('hidden');
+        } else {
+            groupDiv.classList.remove('hidden');
+            randomDiv.classList.add('hidden');
+            
+            if (mode === 'simple') {
+                labelNaming1.innerText = "Gruppenbezeichnung:";
+                naming2Div.classList.add('hidden');
+                targetDiv.classList.add('hidden');
+                groupCountDiv.classList.remove('hidden');
+                minMaxDiv.classList.remove('hidden');
+            } else if (mode === 'tandem') {
+                labelNaming1.innerText = "Bezeichnung Tandems:";
+                naming2Div.classList.add('hidden');
+                targetDiv.classList.add('hidden');
+                groupCountDiv.classList.add('hidden'); 
+                minMaxDiv.classList.add('hidden');
+            } else if (mode === 'jigsaw') {
+                labelNaming1.innerText = "Bezeichnung Expertengruppen:";
+                naming2Div.classList.remove('hidden');
+                targetDiv.classList.remove('hidden');
+                groupCountDiv.classList.remove('hidden');
+                minMaxDiv.classList.remove('hidden');
+            }
+        }
+        triggerLiveUpdate();
+    }
+
+    function parseList() {
+        const raw = document.getElementById('rawInput').value;
+        const lines = raw.split('\n');
+        let temp = [];
+        let counts = {};
+
+        lines.forEach(l => {
+            if (!l.includes(',')) return;
+            const p = l.split(',');
+            const last = p[0].trim();
+            const first = p[1].trim().split(' ')[0];
+            temp.push({ first, last, active: true });
+            counts[first] = (counts[first] || 0) + 1;
+        });
+
+        if (temp.length === 0) {
+            alert("Es konnten keine Namen gefunden werden. Bitte prüfe das Format (Nachname, Vorname).");
+            return;
+        }
+
+        students = temp.map(s => ({
+            ...s,
+            displayName: counts[s.first] > 1 ? `${s.first} ${s.last.charAt(0)}.` : s.first,
+            randomOrder: Math.random()
+        })).sort((a, b) => a.last.localeCompare(b.last));
+
+        hasGenerated = false;
+        document.getElementById('output').innerHTML = "Liste bereit. Klicke auf 'Gruppen auslosen'.";
+        document.getElementById('controls').classList.remove('hidden');
+        toggleMode(); 
+        renderRoster();
+    }
+
+    function renderRoster() {
+        const roster = document.getElementById('studentRoster');
+        roster.innerHTML = '';
+        
+        const total = students.length;
+        const present = students.filter(s => s.active).length;
+        document.getElementById('studentCounter').innerText = `${present} von ${total} anwesend`;
+
+        students.forEach((s, i) => {
+            const span = document.createElement('span');
+            span.className = `student-badge ${s.active ? '' : 'absent'}`;
+            span.innerText = s.displayName;
+            span.onclick = () => { 
+                students[i].active = !students[i].active; 
+                renderRoster(); 
+                triggerLiveUpdate();
+            };
+            roster.appendChild(span);
+        });
+    }
+
+    function triggerLiveUpdate() {
+        if (hasGenerated) renderGroups(false);
+    }
+
+    function reshuffleAndRender() {
+        students.forEach(s => s.randomOrder = Math.random());
+        hasGenerated = true;
+        renderGroups(true); 
+    }
+
+    function getGroupLabel(index, format) {
+        if (format === 'letters') {
+            let label = '';
+            let temp = index;
+            while (temp >= 0) {
+                label = String.fromCharCode(65 + (temp % 26)) + label;
+                temp = Math.floor(temp / 26) - 1;
+            }
+            return label;
+        }
+        return (index + 1).toString();
+    }
+
+    function formatPhysicalGroups(logicalGroups, min, max, prefix, naming) {
+        let result = [];
+        let buffer = { labels: [], students: [] };
+
+        const flushBuffer = () => {
+            if (buffer.students.length > 0) {
+                result.push({
+                    title: buffer.labels.map(l => prefix + l).join(" + "),
+                    students: [...buffer.students]
+                });
+                buffer = { labels: [], students: [] };
+            }
+        };
+
+        logicalGroups.forEach((group, i) => {
+            const label = getGroupLabel(i, naming);
+            if (group.length > max) {
+                flushBuffer();
+                const numChunks = Math.ceil(group.length / max);
+                const chunkSize = Math.ceil(group.length / numChunks);
+                for (let c = 0; c < numChunks; c++) {
+                    const suffix = naming === 'numbers' ? String.fromCharCode(97 + c) : (c + 1).toString();
+                    result.push({
+                        title: prefix + label + suffix,
+                        students: group.slice(c * chunkSize, (c + 1) * chunkSize)
+                    });
+                }
+            } else if (group.length < min) {
+                buffer.labels.push(label);
+                buffer.students.push(...group);
+                if (buffer.students.length >= min) flushBuffer();
+            } else {
+                flushBuffer();
+                result.push({ title: prefix + label, students: [...group] });
+            }
+        });
+        flushBuffer(); 
+        return result;
+    }
+
+    function buildFormattedHTML(title, formattedGroups, showExpertTag, showTargetTag) {
+        let html = `<h3>${title}</h3><div class="group-container">`;
+        formattedGroups.forEach(g => {
+            html += `<div class="group-box"><h4>${g.title}</h4><ul>`;
+            g.students.forEach(s => {
+                let tags = [];
+                if (showExpertTag && s.expertTag) tags.push(s.expertTag);
+                if (showTargetTag && s.homeTag) tags.push(`-> ${s.homeTag}`);
+                const tagStr = tags.length > 0 ? ` <span class="expert-tag">(${tags.join(' | ')})</span>` : '';
+                html += `<li>${s.displayName}${tagStr}</li>`;
+            });
+            html += `</ul></div>`;
+        });
+        return html + `</div>`;
+    }
+
+    function renderGroups(isNewGeneration = false) {
+        const active = students.filter(s => s.active).sort((a, b) => a.randomOrder - b.randomOrder);
+        const mode = document.getElementById('mode').value;
+        const naming1 = document.getElementById('naming1').value; 
+        let outputDiv = document.getElementById('output');
+        
+        if (active.length === 0) {
+            outputDiv.innerHTML = "Keine aktiven Personen.";
+            isBreachedState = false;
+            return;
+        }
+
+        if (mode === 'tandem') {
+            let logicalGroups = [];
+            for (let i = 0; i < active.length; i += 2) {
+                if (i + 1 < active.length) logicalGroups.push([active[i], active[i+1]]);
+                else logicalGroups[logicalGroups.length - 1].push(active[i]);
+            }
+            const formatted = logicalGroups.map((g, i) => ({ title: "Tandem " + getGroupLabel(i, naming1), students: g }));
+            outputDiv.innerHTML = buildFormattedHTML("Tandems", formatted, false, false);
+            isBreachedState = false;
+            return;
+        } 
+        
+        const num = Math.max(2, parseInt(document.getElementById('groupCount').value) || 2);
+        const minSize = parseInt(document.getElementById('minSize').value) || 1;
+        const maxSize = parseInt(document.getElementById('maxSize').value) || 99;
+        
+        let warningMsg = "";
+
+        if (mode === 'simple') {
+            let logicalGroups = Array.from({length: num}, () => []);
+            active.forEach((s, i) => logicalGroups[i % num].push(s));
+            
+            const currentBreach = logicalGroups.some(g => g.length < minSize || g.length > maxSize);
+            
+            if (currentBreach) {
+                let msg = `Die mathematische Grundverteilung sprengt die eingestellten Limits (${minSize}-${maxSize} Personen). Die Gruppen wurden automatisch bestmöglich angepasst (zusammengelegt/geteilt).`;
+                
+                warningMsg = `<div class="alert-warning">
+                    ⚠️ <b>Hinweis zur Gruppengröße:</b> ${msg}
+                    <div style="margin-top: 15px; font-size: 13px; font-weight: normal; border-top: 1px solid #e6dbb9; padding-top: 10px;">
+                        <label class="checkbox-label" style="margin-bottom: 0;">
+                            <input type="checkbox" id="inlinePopupToggle" onchange="togglePopupPreference(this.checked)" ${showPopupWarning ? 'checked' : ''}> Warnungen als Pop-up anzeigen
+                        </label>
+                    </div>
+                </div>`;
+                
+                if (showPopupWarning && (isNewGeneration || !isBreachedState)) {
+                    showWarning(msg);
+                }
+            }
+            
+            isBreachedState = currentBreach;
+            const formatted = formatPhysicalGroups(logicalGroups, minSize, maxSize, "Gruppe ", naming1);
+            outputDiv.innerHTML = warningMsg + buildFormattedHTML("Gruppeneinteilung", formatted, false, false);
+            
+        } else if (mode === 'jigsaw') {
+            const naming2 = document.getElementById('naming2').value; 
+            const showTarget = document.getElementById('showTargetCheckbox').checked;
+
+            if (active.length < num) {
+                outputDiv.innerHTML = `<p style="color:#a00; font-weight:bold;">Fehler: Nicht genug Schüler! Es werden mindestens ${num} Schüler für ${num} Themengebiete benötigt.</p>`;
+                return;
+            }
+
+            let expert = Array.from({length: num}, () => []);
+            active.forEach((s, i) => {
+                const groupIndex = i % num;
+                s.expertTag = getGroupLabel(groupIndex, naming1);
+                expert[groupIndex].push(s);
+            });
+
+            const logicalMinSize = Math.min(...expert.map(g => g.length));
+            let home = Array.from({length: logicalMinSize}, () => []);
+            let extra = 0;
+            expert.forEach(ex => {
+                ex.forEach((s, i) => {
+                    let homeIdx = i < logicalMinSize ? i : extra % logicalMinSize;
+                    if (i >= logicalMinSize) extra++;
+                    s.homeTag = getGroupLabel(homeIdx, naming2);
+                    home[homeIdx].push(s);
+                });
+            });
+
+            const expViol = expert.some(g => g.length < minSize || g.length > maxSize);
+            const homViol = home.some(g => g.length < minSize || g.length > maxSize);
+            const currentBreach = expViol || homViol;
+            
+            if (currentBreach) {
+                let msg = `Die Vorgabe (${minSize}-${maxSize} Personen) konnte rechnerisch nicht überall eingehalten werden.<br><br><i>Wichtig:</i> Beim Gruppenpuzzle werden zu große Stammgruppen absichtlich <b>nicht geteilt</b>. Würde man sie trennen, fehlten in den neuen Gruppen Experten-Themen und das Puzzle ginge methodisch nicht mehr auf.`;
+
+                warningMsg = `<div class="alert-warning">
+                    ⚠️ <b>Hinweis zur Gruppengröße:</b><br>${msg}
+                    <div style="margin-top: 15px; font-size: 13px; font-weight: normal; border-top: 1px solid #e6dbb9; padding-top: 10px;">
+                        <label class="checkbox-label" style="margin-bottom: 0;">
+                            <input type="checkbox" id="inlinePopupToggle" onchange="togglePopupPreference(this.checked)" ${showPopupWarning ? 'checked' : ''}> Warnungen als Pop-up anzeigen
+                        </label>
+                    </div>
+                </div>`;
+
+                if (showPopupWarning && (isNewGeneration || !isBreachedState)) {
+                    showWarning(msg);
+                }
+            }
+
+            isBreachedState = currentBreach;
+            const formattedExperts = formatPhysicalGroups(expert, minSize, maxSize, "Thema ", naming1);
+            const formattedHome = home.map((g, i) => ({ title: "Stammgruppe " + getGroupLabel(i, naming2), students: g }));
+
+            outputDiv.innerHTML = 
+                warningMsg +
+                buildFormattedHTML("1. Expertengruppen", formattedExperts, false, showTarget) + 
+                "<hr>" + 
+                buildFormattedHTML("2. Stammgruppen", formattedHome, true, false);
+        }
+    }
+
+    function selectRandom() {
+        let tempActive = students.filter(s => s.active);
+        for (let i = tempActive.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [tempActive[i], tempActive[j]] = [tempActive[j], tempActive[i]];
+        }
+        const count = Math.min(parseInt(document.getElementById('randomCount').value), tempActive.length);
+        const selected = tempActive.slice(0, count);
+        let html = `<h3>Zufallsauswahl</h3><ol>`;
+        selected.forEach(s => html += `<li><b style="font-size: 1.2em;">${s.displayName}</b></li>`);
+        document.getElementById('output').innerHTML = html + `</ol>`;
+    }
+</script>
+</body>
+</html>
