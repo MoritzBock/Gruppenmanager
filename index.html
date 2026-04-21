@@ -5,579 +5,851 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gruppen- & Klassenmanager</title>
     <style>
-        :root { --primary: #0056b3; --bg: #f4f7f6; --card-bg: #ffffff; --text: #333; }
-        body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg); color: var(--text); padding: 20px; }
-        .container { max-width: 1000px; margin: auto; display: grid; grid-template-columns: 1fr 2fr; gap: 20px; }
-        .card { background: var(--card-bg); padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        h2, h3 { color: var(--primary); margin-top: 0; }
-        textarea { width: 100%; height: 120px; box-sizing: border-box; padding: 10px; margin-bottom: 5px; border: 1px solid #ccc; border-radius: 4px; }
-        button { background-color: var(--primary); color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; width: 100%; font-size: 16px; margin-bottom: 5px; transition: 0.2s; }
-        button:hover { background-color: #004494; }
-        button.sec { background-color: #6c757d; }
-        button.sec:hover { background-color: #5a6268; }
-        button.danger { background-color: #dc3545; width: auto; padding: 5px 10px; font-size: 12px; }
-        select, input[type="number"], input[type="text"] { width: 100%; padding: 8px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-        .student-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-        .student-badge { background: #e9ecef; padding: 5px 10px; border-radius: 15px; cursor: pointer; font-size: 14px; user-select: none; transition: 0.2s; border: 1px solid transparent; }
-        .student-badge:hover { background: #d3d9df; }
-        .student-badge.absent { background: #ffcccc; color: #a00; text-decoration: line-through; border-color: #ff9999; }
-        .group-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
-        .group-box { border: 1px solid #ddd; border-radius: 6px; padding: 15px; background: #fdfdfd; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .hidden { display: none !important; }
-        hr { border: 0; border-top: 1px solid #eee; margin: 20px 0; }
-        .expert-tag { color: var(--primary); font-weight: bold; font-size: 0.85em; }
-        .grid-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .flex-row { display: flex; gap: 10px; align-items: flex-end; margin-bottom: 10px; }
-        .checkbox-label { display: flex; align-items: center; gap: 8px; margin-bottom: 15px; font-weight: bold; cursor: pointer;}
-        .checkbox-label input { width: auto; margin: 0; }
-        .test-box { background: #f8f9fa; border: 1px dashed #adb5bd; padding: 15px; border-radius: 6px; margin-bottom: 15px; }
-        .alert-warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; padding: 12px; border-radius: 6px; margin-bottom: 20px; font-size: 14px; }
+        :root {
+            --bg-color: #f0f4f8; --panel-bg: #ffffff; --text-dark: #2c3e50;
+            --primary: #3498db; --danger: #e74c3c; --border: #d1d8e0;
+            --success: #2ecc71; --hover: #ecf0f1; --warn: #f39c12; --warn-dark: #d68910;
+        }
+
+        * { box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
+        body { margin: 0; background: var(--bg-color); color: var(--text-dark); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+        .header { padding: 10px 20px; background: var(--panel-bg); border-bottom: 1px solid var(--border); display: flex; gap: 10px; align-items: center; }
+        .app-container { display: flex; flex: 1; overflow: hidden; transition: all 0.3s ease; }
+        .app-container.stacked { flex-direction: column; overflow-y: auto; }
         
-        /* Modal (Pop-up) Styles */
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-        .modal-content { background: white; padding: 25px; border-radius: 8px; max-width: 500px; width: 90%; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
-        .modal-content h3 { margin-top: 0; color: #856404; display: flex; align-items: center; gap: 10px; }
-        .modal-content p { line-height: 1.5; margin-bottom: 20px; }
+        .left-col { width: 380px; background: var(--panel-bg); border-right: 1px solid var(--border); padding: 15px; overflow-y: auto; flex-shrink: 0; }
+        .app-container.stacked .left-col { width: 100%; border-right: none; border-bottom: 1px solid var(--border); overflow-y: visible; }
+        
+        .right-col { flex: 1; display: flex; flex-direction: column; overflow-y: auto; position: relative; }
+        .app-container.stacked .right-col { overflow: visible; }
+
+        textarea { width: 100%; height: 100px; resize: vertical; padding: 8px; border: 1px solid var(--border); border-radius: 4px; margin-bottom: 10px; }
+        select, input, button { padding: 8px; margin-bottom: 10px; border: 1px solid var(--border); border-radius: 4px; font-size: 14px; }
+        button { background: var(--primary); color: white; border: none; cursor: pointer; transition: 0.2s; }
+        button:hover { filter: brightness(1.1); }
+        .btn-danger { background: var(--danger); }
+        .btn-success { background: var(--success); }
+        .btn-warn { background: var(--warn); color: white; border: 1px solid var(--warn-dark); font-weight: bold; }
+        .btn-sm { padding: 4px 8px; font-size: 12px; }
+        .control-group { margin-bottom: 15px; padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: #fafbfc; }
+
+        .badge-container { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 15px; }
+        .badge { padding: 4px 10px; background: var(--hover); border-radius: 12px; font-size: 12px; cursor: pointer; user-select: none; border: 1px solid var(--border); }
+        .badge.absent { background: #fadbd8; color: var(--danger); text-decoration: line-through; border-color: var(--danger); }
+
+        .panel { padding: 15px; display: none; flex-shrink: 0; }
+        .panel.active { display: block; }
+        
+        .planner-container { position: relative; height: 900px; background: repeating-linear-gradient(#eee 0 1px, transparent 1px 100%), repeating-linear-gradient(90deg, #eee 0 1px, transparent 1px 100%); background-size: 20px 20px; background-color: white; border: 1px solid var(--border); overflow: hidden; }
+
+        .planner-obj { position: absolute; border: 2px solid var(--border); background: white; border-radius: 4px; cursor: grab; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); user-select: none; font-size: 16px; }
+        .planner-obj.selected { border-color: var(--primary); outline: 2px solid rgba(52, 152, 219, 0.4); }
+        .desk { width: 100px; height: 80px; flex-direction: column; }
+        .desk-settings { position: absolute; top: 2px; right: 2px; font-size: 10px; cursor: pointer; display: none; }
+        .desk:hover .desk-settings { display: block; }
+        .table-text { font-size: inherit; text-align: center; width: 100%; padding: 2px; pointer-events: none; }
+        
+        .cluster-label { position: absolute; background: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; cursor: move; box-shadow: 0 1px 3px rgba(0,0,0,0.2); z-index: 100; display: flex; align-items: center; gap: 5px; border: none; }
+        .cluster-label input[type="color"] { width: 0; height: 0; padding: 0; border: none; opacity: 0; position: absolute; pointer-events: none; }
+        .cluster-label input[type="text"] { border: none; background: transparent; font-weight: bold; width: 80px; padding: 0; margin: 0; font-size: 12px; }
+        
+        .selection-box { position: absolute; border: 1px solid rgba(52, 152, 219, 0.8); background: rgba(52, 152, 219, 0.2); pointer-events: none; z-index: 999; }
+        .toolbar { position: absolute; top: 10px; left: 10px; background: white; padding: 5px; border-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 10; display: flex; gap: 5px; align-items: center; }
+        
+        .group-card { border: 2px solid; border-radius: 6px; padding: 10px; margin-bottom: 10px; background: white; min-width: 150px; flex: 1; }
+        .group-card h4 { margin: 0 0 10px 0; }
+        .group-members { display: flex; flex-direction: column; gap: 4px; }
+        
+        .student-item { padding: 4px; border-radius: 4px; cursor: pointer; transition: background 0.2s; display: flex; justify-content: space-between; align-items: center; border: 1px solid transparent; }
+        .student-item:hover { background: rgba(52, 152, 219, 0.1); border-color: rgba(52, 152, 219, 0.3); }
+        
+        .jigsaw-container { display: flex; flex-direction: column; gap: 20px; width: 100%; }
+
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { background: white; padding: 20px; border-radius: 8px; width: 350px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+        .modal-warning { border: 3px solid var(--danger); }
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
-<div id="warningModal" class="modal-overlay hidden">
-    <div class="modal-content">
-        <h3>⚠️ Hinweis zur Gruppengröße</h3>
-        <p id="modalText"></p>
-        <label class="checkbox-label" style="font-weight: normal; font-size: 14px; margin-bottom: 20px;">
-            <input type="checkbox" id="modalNeverShowCheckbox"> Meldung zukünftig nicht mehr als Pop-up anzeigen
-        </label>
-        <button onclick="closeModal()">Verstanden</button>
+<div class="header">
+    <strong>Gruppen- & Klassenmanager</strong>
+    <button onclick="toggleLayout()" class="btn-sm">Layout Umschalten</button>
+    <button onclick="togglePanel('list-panel')" class="btn-sm">Listenansicht An/Aus</button>
+    <button onclick="togglePanel('planner-panel')" class="btn-sm">Raumplaner An/Aus</button>
+    <select id="export-select" onchange="handleExport(this.value)" style="margin-bottom:0; margin-left: auto;">
+        <option value="">Exportieren...</option>
+        <option value="print">Als PDF/Drucken</option>
+        <option value="csv">Excel (CSV)</option>
+        <option value="doc">Word (DOC)</option>
+    </select>
+</div>
+
+<div class="app-container" id="app-main">
+    <div class="left-col">
+        <div class="control-group">
+            <h3>1. Datenverwaltung</h3>
+            <div style="display: flex; gap: 5px;">
+                <input type="text" id="class-name" placeholder="Klassenname" style="flex: 1;">
+                <button onclick="saveData()" class="btn-sm" title="Speichern">💾</button>
+                <button onclick="loadData()" class="btn-sm" title="Laden">📂</button>
+                <button onclick="deleteData()" class="btn-sm btn-danger" title="Löschen">🗑️</button>
+            </div>
+            <select id="name-format" style="width: 100%;">
+                <option value="last_first">Nachname, Vorname</option>
+                <option value="first_last">Vorname Nachname</option>
+                <option value="first_only">Nur Vorname</option>
+            </select>
+            <textarea id="student-input" placeholder="ASV-Liste hier einfügen..."></textarea>
+            
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <button onclick="processInput()" class="btn-sm">Einlesen</button>
+                <button onclick="document.getElementById('student-input').value=''" class="btn-sm btn-danger">Feld leeren</button>
+            </div>
+
+            <div style="margin-top: 10px; font-size: 12px; display: flex; justify-content: space-between;">
+                <span>Anwesend: <strong id="attendance-counter">0/0</strong></span>
+                <span style="cursor:pointer; color:var(--primary)" onclick="document.getElementById('dummy-module').classList.toggle('hidden')">Test-Generator ±</span>
+            </div>
+            
+            <div id="dummy-module" class="hidden" style="margin-top: 10px; background:#eee; padding:5px; border-radius:4px;">
+                <input type="number" id="dummy-count" value="20" min="1" max="50" style="width:60px; padding:2px; margin:0;">
+                <button onclick="generateDummies()" class="btn-sm">Dummys erzeugen</button>
+            </div>
+
+            <hr style="border:0; border-top:1px solid var(--border); margin:10px 0;">
+            <div class="badge-container" id="student-badges"></div>
+        </div>
+
+        <div class="control-group">
+            <h3>2. Gruppenbildung</h3>
+            
+            <button id="toggle-warnings-btn" onclick="toggleGlobalWarnings()" class="btn-sm btn-warn" style="width: 100%; margin-bottom: 10px;">Warnungen: AKTIV</button>
+
+            <select id="group-mode" style="width: 100%;" onchange="toggleModeOptions()">
+                <option value="simple">Einfache Gruppen</option>
+                <option value="tandem">Tandems (Immer 2er)</option>
+                <option value="jigsaw">Gruppenpuzzle (Jigsaw)</option>
+                <option value="random">Zufallsauswahl</option>
+            </select>
+            
+            <div id="standard-params" style="display: flex; gap: 5px;">
+                <input type="number" id="param-count" placeholder="Themen/Gruppen" min="1" style="width: 33%;">
+                <input type="number" id="param-min" placeholder="Min" min="1" style="width: 33%;">
+                <input type="number" id="param-max" placeholder="Max" min="1" style="width: 33%;">
+            </div>
+            
+            <div id="random-params" class="hidden">
+                <input type="number" id="random-count" placeholder="X Personen ziehen" min="1" style="width: 100%;">
+            </div>
+
+            <div id="naming-params">
+                <input type="text" id="custom-labels" placeholder="Custom Namen (kommagetrennt)" style="width: 100%;">
+            </div>
+
+            <label style="font-size: 12px; display: flex; align-items: center; gap: 5px; margin-bottom: 10px;">
+                <input type="checkbox" id="show-jigsaw-labels" checked onchange="renderGroups()"> Herkunft/Ziel anzeigen
+            </label>
+
+            <button onclick="generateGroups(true)" style="width: 100%;" class="btn-success">Gruppen auslosen / Neu mischen</button>
+        </div>
+
+        <div class="control-group">
+            <h3>3. Raumplaner</h3>
+            <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                <button onclick="addDesk()" class="btn-sm">Einzeltisch +</button>
+                <button onclick="addGeneric('Lehrerpult', 150, 60)" class="btn-sm">Pult +</button>
+                <button onclick="addGeneric('Tafel', 200, 20)" class="btn-sm">Tafel +</button>
+                <button onclick="addGeneric('Flipchart', 80, 40)" class="btn-sm">Flipchart +</button>
+            </div>
+
+            <button onclick="assignDesks()" style="width: 100%; margin-top:10px; background: var(--primary);">Tische besetzen</button>
+            
+            <div style="margin-top: 10px; display: flex; gap: 5px; align-items: center;">
+                <select id="room-slot" style="margin:0; width:80px; padding:4px;">
+                    <option value="1">Slot 1</option>
+                    <option value="2">Slot 2</option>
+                    <option value="3">Slot 3</option>
+                </select>
+                <button onclick="saveRoom()" class="btn-sm">Speichern</button>
+                <button onclick="loadRoom()" class="btn-sm">Laden</button>
+            </div>
+            <button onclick="loadPreset()" class="btn-sm" style="width:100%; margin-top:5px;">Standardraum-Preset laden</button>
+        </div>
+    </div>
+
+    <div class="right-col">
+        <div id="list-panel" class="panel active" style="border-bottom: 2px dashed var(--border);">
+            <h3>Generierte Listen</h3>
+            <p style="font-size: 12px; color: gray; margin-top: -10px;">Klicke auf einen Schüler in der Liste, um ihn manuell zu verschieben.</p>
+            <div id="group-results" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-start;"></div>
+        </div>
+        
+        <div id="planner-panel" class="panel" style="padding: 0; display: none;">
+            <div class="planner-container" id="canvas">
+                <div class="toolbar">
+                    <button onclick="formatSelected('fontWeight', 'bold')" class="btn-sm" title="Fett"><b>F</b></button>
+                    <button onclick="formatSelected('fontStyle', 'italic')" class="btn-sm" title="Kursiv"><i>K</i></button>
+                    <button onclick="formatSelected('textDecoration', 'underline')" class="btn-sm" title="Unterstrichen"><u>U</u></button>
+                    <input type="number" id="font-size-input" value="16" style="width: 50px; margin: 0; padding: 2px;" onchange="formatSelected('fontSize', this.value + 'px')" title="Schriftgröße">
+                    
+                    <div id="jigsaw-phase-switch" class="hidden" style="margin-left: 10px; display: flex; align-items: center; gap: 5px; background: #e8f4fd; padding: 2px 8px; border-radius: 4px; border: 1px solid var(--primary);">
+                        <strong style="color: var(--primary); font-size: 12px;">Puzzle-Phase:</strong>
+                        <label style="font-size: 12px; cursor: pointer;"><input type="radio" name="jigsaw-phase" value="expert" checked onchange="assignDesks()"> Experten</label>
+                        <label style="font-size: 12px; cursor: pointer;"><input type="radio" name="jigsaw-phase" value="base" onchange="assignDesks()"> Stammgruppen</label>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
-<div class="container">
-    <div class="card">
-        
-        <div style="margin-bottom: 15px; text-align: right;">
-            <label class="checkbox-label" style="font-weight: normal; font-size: 0.85em; color: #666; justify-content: flex-end; margin-bottom: 0;">
-                <input type="checkbox" onchange="document.getElementById('testModeDiv').classList.toggle('hidden', !this.checked)"> Test-Generator einblenden
-            </label>
-        </div>
-
-        <div id="testModeDiv" class="test-box hidden">
-            <h3 style="margin-top:0; font-size: 16px; color: #495057;">Dummy-Klasse generieren</h3>
-            <p style="font-size: 12px; color: #666; margin-top: 0;">Erstellt eine zufällige Liste.</p>
-            <div class="flex-row" style="margin-bottom: 0;">
-                <input type="number" id="dummyCount" placeholder="Anzahl Schüler" value="19" min="2" style="margin-bottom: 0;">
-                <button class="sec" style="width: auto; margin-bottom: 0;" onclick="generateDummies()">Generieren</button>
-            </div>
-        </div>
-
-        <h2>1. Klassenverwaltung</h2>
-        
-        <label>Gespeicherte Klassen:</label>
-        <div class="flex-row">
-            <select id="savedClassesSelect" onchange="loadClass()" style="margin-bottom: 0;">
-                <option value="">-- Klasse wählen --</option>
-            </select>
-            <button class="danger" onclick="deleteClass()" style="margin-bottom: 0;">Löschen</button>
-        </div>
-        <hr>
-
-        <label>Namensliste (Nachname, Vorname):</label>
-        <textarea id="rawInput" placeholder="Müller, Max&#10;Schmidt, Erika"></textarea>
-        
-        <button class="sec" style="background-color: #868e96; font-size: 13px; padding: 6px; margin-bottom: 15px;" onclick="clearInput()">Textfeld leeren (für einmalige Nutzung)</button>
-        
-        <div class="flex-row">
-            <input type="text" id="classNameInput" placeholder="Klassenname zum Speichern (z.B. 10a)" style="margin-bottom: 0;">
-            <button class="sec" style="width: auto; margin-bottom: 0;" onclick="saveClass()">Speichern</button>
-        </div>
-        
-        <button onclick="parseList()" style="margin-top: 15px;">Liste einlesen & starten</button>
-
-        <div id="controls" class="hidden">
-            <hr>
-            <h2>2. Modus wählen</h2>
-            <select id="mode" onchange="toggleMode()">
-                <option value="simple">Einfache Gruppen</option>
-                <option value="tandem">Tandems (2er-Gruppen)</option>
-                <option value="jigsaw">Gruppenpuzzle</option>
-                <option value="random">Zufallsauswahl (Personen)</option>
-            </select>
-
-            <div id="groupDiv">
-                <label id="labelNaming1">Gruppenbezeichnung:</label>
-                <select id="naming1" onchange="triggerLiveUpdate()">
-                    <option value="letters">Buchstaben (A, B, C...)</option>
-                    <option value="numbers">Zahlen (1, 2, 3...)</option>
-                </select>
-
-                <div id="naming2Div" class="hidden">
-                    <label>Bezeichnung Stammgruppen:</label>
-                    <select id="naming2" onchange="triggerLiveUpdate()">
-                        <option value="numbers">Zahlen (1, 2, 3...)</option>
-                        <option value="letters">Buchstaben (A, B, C...)</option>
-                    </select>
-                </div>
-
-                <div id="groupCountDiv">
-                    <label>Anzahl Gruppen/Themen:</label>
-                    <input type="number" id="groupCount" value="4" min="2" onchange="triggerLiveUpdate()">
-                </div>
-
-                <div id="minMaxDiv" class="grid-2col">
-                    <div>
-                        <label>Min. Personen:</label>
-                        <input type="number" id="minSize" value="2" min="1" onchange="triggerLiveUpdate()">
-                    </div>
-                    <div>
-                        <label>Max. Personen:</label>
-                        <input type="number" id="maxSize" value="6" min="2" onchange="triggerLiveUpdate()">
-                    </div>
-                </div>
-
-                <div id="targetDiv" class="hidden">
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="showTargetCheckbox" onchange="triggerLiveUpdate()"> Ziel-Stammgruppe anzeigen
-                    </label>
-                </div>
-
-                <button onclick="reshuffleAndRender()">Gruppen auslosen (Neu mischen)</button>
-            </div>
-
-            <div id="randomDiv" class="hidden">
-                <label>Anzahl Personen:</label>
-                <input type="number" id="randomCount" value="1" min="1">
-                <button class="sec" onclick="selectRandom()">Zufallsauswahl ziehen</button>
-            </div>
-
-            <hr>
-            <h3 style="margin-bottom: 5px;">Anwesenheit (Live-Update)</h3>
-            <div id="studentCounter" style="font-size: 14px; font-weight: bold; color: var(--primary); margin-bottom: 10px;">0 / 0 anwesend</div>
-            <div id="studentRoster" class="student-list"></div>
-        </div>
+<div class="modal" id="warning-modal">
+    <div class="modal-content modal-warning">
+        <h3 style="color: var(--danger); margin-top:0;">⚠️ Warnung</h3>
+        <p id="warning-text"></p>
+        <label style="font-size: 12px; display:block; margin: 15px 0;">
+            <input type="checkbox" id="disable-warnings"> Zukünftig nicht anzeigen
+        </label>
+        <button onclick="closeWarning()">Verstanden</button>
     </div>
+</div>
 
-    <div class="card">
-        <h2>Ergebnis</h2>
-        <div id="output">Noch keine Daten vorhanden. Füge eine Liste ein und klicke auf "Liste einlesen".</div>
+<div class="modal" id="move-modal">
+    <div class="modal-content">
+        <h4 style="margin-top:0;">Schüler verschieben</h4>
+        <p>Bewege <strong id="move-student-name"></strong> nach:</p>
+        <select id="move-target-group" style="width: 100%;"></select>
+        <div style="display:flex; gap:10px; margin-top:15px;">
+            <button onclick="confirmMove()" style="flex:1;" class="btn-success">Verschieben</button>
+            <button onclick="closeMoveModal()" style="flex:1;" class="btn-danger">Abbrechen</button>
+        </div>
     </div>
 </div>
 
 <script>
-    let students = [];
-    let hasGenerated = false;
-    let showPopupWarning = true; 
-    let isBreachedState = false; 
+const state = {
+    students: [],
+    shuffledOrder: [], 
+    groups: [], 
+    expertGroups: [],
+    palette: ['#FFB3BA', '#FFDFBA', '#FFFFBA', '#BAFFC9', '#BAE1FF', '#E8BAFF', '#FFBAE1', '#E2F0CB', '#B5EAD7', '#C7CEEA'],
+    mode: 'simple'
+};
 
-    // --- Modal-Logik ---
+let moveContext = null; 
 
-    function showWarning(message) {
-        document.getElementById('modalText').innerHTML = message;
-        document.getElementById('modalNeverShowCheckbox').checked = false; 
-        document.getElementById('warningModal').classList.remove('hidden');
+function updateWarningBtn() {
+    const btn = document.getElementById('toggle-warnings-btn');
+    if (!btn) return;
+    const isHidden = localStorage.getItem('hideWarnings') === 'true';
+    if (isHidden) {
+        btn.innerText = "Warnungen: DEAKTIVIERT (Klick zum Aktivieren)";
+        btn.style.background = "var(--hover)";
+        btn.style.color = "var(--text-dark)";
+        btn.style.borderColor = "var(--border)";
+    } else {
+        btn.innerText = "Warnungen: AKTIV (Klick zum Deaktivieren)";
+        btn.style.background = "var(--warn)";
+        btn.style.color = "white";
+        btn.style.borderColor = "var(--warn-dark)";
+    }
+}
+
+function toggleGlobalWarnings() {
+    const isHidden = localStorage.getItem('hideWarnings') === 'true';
+    localStorage.setItem('hideWarnings', isHidden ? 'false' : 'true');
+    updateWarningBtn();
+}
+
+function showWarning(text, force = false) {
+    if(!force && localStorage.getItem('hideWarnings') === 'true') return; 
+    document.getElementById('warning-text').innerHTML = text;
+    document.getElementById('disable-warnings').checked = false; 
+    document.getElementById('warning-modal').style.display = 'flex';
+}
+
+function closeWarning() {
+    if(document.getElementById('disable-warnings').checked) {
+        localStorage.setItem('hideWarnings', 'true');
+        updateWarningBtn(); 
+    }
+    document.getElementById('warning-modal').style.display = 'none';
+}
+
+window.onload = () => { updateWarningBtn(); };
+
+function toggleModeOptions() {
+    const m = document.getElementById('group-mode').value;
+    document.getElementById('standard-params').classList.toggle('hidden', m === 'random');
+    document.getElementById('naming-params').classList.toggle('hidden', m === 'random');
+    document.getElementById('random-params').classList.toggle('hidden', m !== 'random');
+    
+    const switchEl = document.getElementById('jigsaw-phase-switch');
+    if (m === 'jigsaw') {
+        switchEl.style.display = 'flex';
+        switchEl.classList.remove('hidden');
+    } else {
+        switchEl.style.display = 'none';
+        switchEl.classList.add('hidden');
+    }
+}
+
+function generateDummies() {
+    let count = parseInt(document.getElementById('dummy-count').value) || 20;
+    if (count > 50) count = 50;
+
+    const firsts = ["Tim", "Anna", "Max", "Lisa", "Paul", "Marie", "Tom", "Laura", "Felix", "Sarah", "Jonas", "Emma", "Finn", "Mia", "Leon"];
+    const lasts = ["Meier", "Meyer", "Müller", "Münch", "Mertens", "Bader", "Bauer", "Böhm", "Becker", "Busch", "Weber", "Wagner", "Wolf", "Winkler", "Wurm", "Hahn", "Huber", "Hesse", "Hoffmann", "Haas", "Seidel", "Sander", "Simon", "Sommer", "Suter"];
+
+    let generated = new Set();
+    let out = [];
+
+    const edgeCases = ["Meier, Tim", "Meyer, Tim", "Müller, Tim", "Bader, Anna", "Bauer, Anna", "Böhm, Anna"];
+    for (let name of edgeCases) {
+        if (out.length < count) { generated.add(name); out.push(name); }
     }
 
-    function closeModal() {
-        const dontShow = document.getElementById('modalNeverShowCheckbox').checked;
-        if (dontShow) {
-            showPopupWarning = false;
-            const inlineCheckbox = document.getElementById('inlinePopupToggle');
-            if (inlineCheckbox) inlineCheckbox.checked = false;
-        }
-        document.getElementById('warningModal').classList.add('hidden');
+    while (out.length < count) {
+        const f = firsts[Math.floor(Math.random() * firsts.length)];
+        const l = lasts[Math.floor(Math.random() * lasts.length)];
+        const fullName = `${l}, ${f}`;
+        if (!generated.has(fullName)) { generated.add(fullName); out.push(fullName); }
     }
 
-    function togglePopupPreference(isChecked) {
-        showPopupWarning = isChecked;
-    }
+    out.sort(() => Math.random() - 0.5);
+    document.getElementById('student-input').value = out.join('\n');
+    processInput();
+}
 
-    // --- Speicher-Logik & Reset ---
+function processInput() {
+    const raw = document.getElementById('student-input').value.split('\n').filter(l => l.trim() !== '');
+    const format = document.getElementById('name-format').value;
+    
+    let processed = raw.map((line, i) => {
+        let parts = line.split(/[,\s]+/).filter(Boolean);
+        let first = "", last = "";
+        if (format === 'last_first' && parts.length > 1) { last = parts[0]; first = parts[1]; }
+        else if (format === 'first_last' && parts.length > 1) { first = parts[0]; last = parts[parts.length-1]; }
+        else { first = parts[0]; last = parts[1] || ""; }
+        return { id: `s_${i}`, first, last, absent: false };
+    });
 
-    function clearInput() {
-        document.getElementById('rawInput').value = '';
-        document.getElementById('classNameInput').value = '';
-        document.getElementById('savedClassesSelect').value = '';
-        document.getElementById('controls').classList.add('hidden');
-        document.getElementById('output').innerHTML = 'Feld geleert. Bereit für eine neue einmalige Liste.';
-        students = [];
-    }
+    const byFirst = {};
+    processed.forEach(p => { if (!byFirst[p.first]) byFirst[p.first] = []; byFirst[p.first].push(p); });
 
-    function saveClass() {
-        const name = document.getElementById('classNameInput').value.trim();
-        const content = document.getElementById('rawInput').value.trim();
-        if (!name || !content) {
-            alert("Bitte Klassenname und Liste ausfüllen!");
-            return;
-        }
-        let saved = JSON.parse(localStorage.getItem('gp_classes') || '{}');
-        saved[name] = content;
-        localStorage.setItem('gp_classes', JSON.stringify(saved));
-        updateClassSelect();
-        document.getElementById('savedClassesSelect').value = name;
-        alert(`Klasse "${name}" wurde gespeichert.`);
-    }
-
-    function updateClassSelect() {
-        const select = document.getElementById('savedClassesSelect');
-        const saved = JSON.parse(localStorage.getItem('gp_classes') || '{}');
-        const currentSelection = select.value;
-        select.innerHTML = '<option value="">-- Klasse wählen --</option>';
-        Object.keys(saved).sort().forEach(name => {
-            const opt = document.createElement('option');
-            opt.value = name;
-            opt.innerText = name;
-            select.appendChild(opt);
-        });
-        if (saved[currentSelection]) {
-            select.value = currentSelection;
-        }
-    }
-
-    function loadClass() {
-        const name = document.getElementById('savedClassesSelect').value;
-        if (!name) return;
-        const saved = JSON.parse(localStorage.getItem('gp_classes') || '{}');
-        document.getElementById('rawInput').value = saved[name];
-        document.getElementById('classNameInput').value = name;
-    }
-
-    function deleteClass() {
-        const name = document.getElementById('savedClassesSelect').value;
-        if (!name) return;
-        if (confirm(`Soll die Klasse "${name}" wirklich gelöscht werden?`)) {
-            let saved = JSON.parse(localStorage.getItem('gp_classes') || '{}');
-            delete saved[name];
-            localStorage.setItem('gp_classes', JSON.stringify(saved));
-            updateClassSelect();
-            clearInput();
-        }
-    }
-
-    function generateDummies() {
-        const count = parseInt(document.getElementById('dummyCount').value) || 24;
-        const maleFirst = ["Ben", "Paul", "Leon", "Finn", "Elias", "Jonas", "Luis", "Noah", "Felix", "Lukas", "Tim", "Max", "Jan", "Philipp", "Tom"];
-        const femaleFirst = ["Mia", "Emma", "Hannah", "Sofia", "Anna", "Emilia", "Lina", "Marie", "Lena", "Mila", "Lea", "Amelie", "Laura", "Julia", "Sarah"];
-        const lastNames = ["Müller", "Schmidt", "Schneider", "Fischer", "Weber", "Meyer", "Wagner", "Becker", "Schulz", "Hoffmann", "Schäfer", "Koch", "Bauer", "Richter", "Klein", "Wolf", "Schröder", "Neumann", "Schwarz", "Zimmermann"];
-
-        let dummyList = [];
-        for (let i = 0; i < count; i++) {
-            const isMale = i % 2 === 0;
-            const first = isMale ? maleFirst[Math.floor(Math.random() * maleFirst.length)] : femaleFirst[Math.floor(Math.random() * femaleFirst.length)];
-            const last = lastNames[Math.floor(Math.random() * lastNames.length)];
-            dummyList.push(`${last}, ${first}`);
-        }
-        
-        document.getElementById('rawInput').value = dummyList.join('\n');
-        document.getElementById('classNameInput').value = ''; 
-        document.getElementById('savedClassesSelect').value = ''; 
-        parseList(); 
-    }
-
-    window.onload = updateClassSelect;
-
-    function toggleMode() {
-        const mode = document.getElementById('mode').value;
-        const groupDiv = document.getElementById('groupDiv');
-        const randomDiv = document.getElementById('randomDiv');
-        const naming2Div = document.getElementById('naming2Div');
-        const labelNaming1 = document.getElementById('labelNaming1');
-        const targetDiv = document.getElementById('targetDiv');
-        const groupCountDiv = document.getElementById('groupCountDiv');
-        const minMaxDiv = document.getElementById('minMaxDiv');
-
-        if (mode === 'random') {
-            groupDiv.classList.add('hidden');
-            randomDiv.classList.remove('hidden');
+    processed.forEach(p => {
+        let group = byFirst[p.first];
+        if (group.length === 1) {
+            p.name = p.first;
         } else {
-            groupDiv.classList.remove('hidden');
-            randomDiv.classList.add('hidden');
-            
-            if (mode === 'simple') {
-                labelNaming1.innerText = "Gruppenbezeichnung:";
-                naming2Div.classList.add('hidden');
-                targetDiv.classList.add('hidden');
-                groupCountDiv.classList.remove('hidden');
-                minMaxDiv.classList.remove('hidden');
-            } else if (mode === 'tandem') {
-                labelNaming1.innerText = "Bezeichnung Tandems:";
-                naming2Div.classList.add('hidden');
-                targetDiv.classList.add('hidden');
-                groupCountDiv.classList.add('hidden'); 
-                minMaxDiv.classList.add('hidden');
-            } else if (mode === 'jigsaw') {
-                labelNaming1.innerText = "Bezeichnung Expertengruppen:";
-                naming2Div.classList.remove('hidden');
-                targetDiv.classList.remove('hidden');
-                groupCountDiv.classList.remove('hidden');
-                minMaxDiv.classList.remove('hidden');
+            let len = 1; let unique = false;
+            while (!unique && len <= p.last.length) {
+                let prefix = p.last.substring(0, len).toLowerCase();
+                let conflicts = group.filter(other => other !== p && other.last.toLowerCase().startsWith(prefix));
+                if (conflicts.length === 0) unique = true;
+                else len++;
             }
+            p.name = `${p.first} ${p.last.substring(0, len)}.`;
+            if(!unique && p.last === "") p.name = p.first;
         }
-        triggerLiveUpdate();
-    }
+    });
 
-    function parseList() {
-        const raw = document.getElementById('rawInput').value;
-        const lines = raw.split('\n');
-        let temp = [];
-        let counts = {};
+    state.students = processed;
+    state.shuffledOrder = processed.map(s => s.id);
+    renderBadges();
+}
 
-        lines.forEach(l => {
-            if (!l.includes(',')) return;
-            const p = l.split(',');
-            const last = p[0].trim();
-            const first = p[1].trim().split(' ')[0];
-            temp.push({ first, last, active: true });
-            counts[first] = (counts[first] || 0) + 1;
-        });
-
-        if (temp.length === 0) {
-            alert("Es konnten keine Namen gefunden werden. Bitte prüfe das Format (Nachname, Vorname).");
-            return;
-        }
-
-        students = temp.map(s => ({
-            ...s,
-            displayName: counts[s.first] > 1 ? `${s.first} ${s.last.charAt(0)}.` : s.first,
-            randomOrder: Math.random()
-        })).sort((a, b) => a.last.localeCompare(b.last));
-
-        hasGenerated = false;
-        document.getElementById('output').innerHTML = "Liste bereit. Klicke auf 'Gruppen auslosen'.";
-        document.getElementById('controls').classList.remove('hidden');
-        toggleMode(); 
-        renderRoster();
-    }
-
-    function renderRoster() {
-        const roster = document.getElementById('studentRoster');
-        roster.innerHTML = '';
-        
-        const total = students.length;
-        const present = students.filter(s => s.active).length;
-        document.getElementById('studentCounter').innerText = `${present} von ${total} anwesend`;
-
-        students.forEach((s, i) => {
-            const span = document.createElement('span');
-            span.className = `student-badge ${s.active ? '' : 'absent'}`;
-            span.innerText = s.displayName;
-            span.onclick = () => { 
-                students[i].active = !students[i].active; 
-                renderRoster(); 
-                triggerLiveUpdate();
-            };
-            roster.appendChild(span);
-        });
-    }
-
-    function triggerLiveUpdate() {
-        if (hasGenerated) renderGroups(false);
-    }
-
-    function reshuffleAndRender() {
-        students.forEach(s => s.randomOrder = Math.random());
-        hasGenerated = true;
-        renderGroups(true); 
-    }
-
-    function getGroupLabel(index, format) {
-        if (format === 'letters') {
-            let label = '';
-            let temp = index;
-            while (temp >= 0) {
-                label = String.fromCharCode(65 + (temp % 26)) + label;
-                temp = Math.floor(temp / 26) - 1;
-            }
-            return label;
-        }
-        return (index + 1).toString();
-    }
-
-    function formatPhysicalGroups(logicalGroups, min, max, prefix, naming) {
-        let result = [];
-        let buffer = { labels: [], students: [] };
-
-        const flushBuffer = () => {
-            if (buffer.students.length > 0) {
-                result.push({
-                    title: buffer.labels.map(l => prefix + l).join(" + "),
-                    students: [...buffer.students]
-                });
-                buffer = { labels: [], students: [] };
-            }
+function renderBadges() {
+    const container = document.getElementById('student-badges');
+    container.innerHTML = '';
+    let present = 0;
+    state.students.forEach(s => {
+        if(!s.absent) present++;
+        const b = document.createElement('div');
+        b.className = `badge ${s.absent ? 'absent' : ''}`;
+        b.innerText = s.name;
+        b.onclick = () => { 
+            s.absent = !s.absent; 
+            renderBadges(); 
+            if(state.groups.length > 0) generateGroups(false); 
         };
+        container.appendChild(b);
+    });
+    document.getElementById('attendance-counter').innerText = `${present}/${state.students.length}`;
+}
 
-        logicalGroups.forEach((group, i) => {
-            const label = getGroupLabel(i, naming);
-            if (group.length > max) {
-                flushBuffer();
-                const numChunks = Math.ceil(group.length / max);
-                const chunkSize = Math.ceil(group.length / numChunks);
-                for (let c = 0; c < numChunks; c++) {
-                    const suffix = naming === 'numbers' ? String.fromCharCode(97 + c) : (c + 1).toString();
-                    result.push({
-                        title: prefix + label + suffix,
-                        students: group.slice(c * chunkSize, (c + 1) * chunkSize)
-                    });
-                }
-            } else if (group.length < min) {
-                buffer.labels.push(label);
-                buffer.students.push(...group);
-                if (buffer.students.length >= min) flushBuffer();
+function saveData() {
+    const cName = document.getElementById('class-name').value || 'default';
+    localStorage.setItem(`class_${cName}`, JSON.stringify(state.students));
+    alert('Klasse gespeichert!');
+}
+function loadData() {
+    const cName = document.getElementById('class-name').value || 'default';
+    const data = localStorage.getItem(`class_${cName}`);
+    if(data) { state.students = JSON.parse(data); state.shuffledOrder = state.students.map(s=>s.id); renderBadges(); }
+}
+function deleteData() {
+    const cName = document.getElementById('class-name').value || 'default';
+    if(confirm(`Klasse '${cName}' wirklich löschen?`)) {
+        localStorage.removeItem(`class_${cName}`);
+        state.students = []; renderBadges();
+    }
+}
+
+function validateGroups(arr, isManual = false) {
+    if (state.mode === 'random' || state.mode === 'tandem') return; 
+
+    const minInput = parseInt(document.getElementById('param-min').value);
+    const maxInput = parseInt(document.getElementById('param-max').value);
+    const actMin = isNaN(minInput) ? 1 : minInput;
+    const actMax = isNaN(maxInput) ? 99 : maxInput;
+    
+    let warnings = [];
+    
+    arr.forEach(g => {
+        if(g.members.length < actMin) warnings.push(`Gruppe '${g.label}' ist zu klein (${g.members.length} < ${actMin}).`);
+        if(g.members.length > actMax) warnings.push(`Gruppe '${g.label}' ist zu groß (${g.members.length} > ${actMax}).`);
+    });
+    
+    if (state.mode === 'jigsaw' && arr === state.groups) {
+        const requiredExpertCount = state.expertGroups.length;
+        arr.forEach(g => {
+            const presentExperts = new Set(g.members.map(m => m._expLabel));
+            if(presentExperts.size < requiredExpertCount) {
+                warnings.push(`<strong style="color:var(--danger)">KRITISCHER JIGSAW-FEHLER in '${g.label}':</strong> Es fehlen Expertenthemen! Die Jigsaw-Methodik geht nicht mehr auf.`);
+            }
+        });
+    }
+    
+    if(warnings.length > 0) {
+        const prefix = isManual ? "<strong>Regelverstoß durch manuelles Verschieben:</strong><br><br>" : "<strong>Hinweis bei der Gruppengenerierung:</strong><br><br>";
+        showWarning(prefix + warnings.join('<br>'), isManual);
+    }
+}
+
+function generateGroups(isManual = true) {
+    state.mode = document.getElementById('group-mode').value;
+    
+    if (isManual) {
+        state.shuffledOrder = [...state.students].map(s=>s.id).sort(() => Math.random() - 0.5);
+    }
+    
+    const active = state.shuffledOrder
+        .map(id => state.students.find(s => s.id === id))
+        .filter(s => s && !s.absent);
+    
+    let labels = document.getElementById('custom-labels').value.split(',').map(s=>s.trim()).filter(Boolean);
+    const getLabel = (i, prefix="") => labels[i] || `${prefix}${i+1}`;
+
+    const oldBase = [...state.groups];
+    const oldExp = [...state.expertGroups];
+
+    state.groups = []; state.expertGroups = [];
+    const count = parseInt(document.getElementById('param-count').value) || 1;
+
+    if (state.mode === 'random') {
+        const pullCount = parseInt(document.getElementById('random-count').value) || 1;
+        state.groups = [{ id: 'rand_1', label: 'Zufallsauswahl', color: '#ecf0f1', members: active.slice(0, pullCount) }];
+    }
+    else if (state.mode === 'tandem') {
+        for(let i=0; i<active.length; i+=2) {
+            if(i === active.length - 3) { state.groups.push({ id:`g_${i}`, label:getLabel(state.groups.length), color:state.palette[state.groups.length%10], members:active.slice(i, i+3)}); break; }
+            state.groups.push({ id:`g_${i}`, label:getLabel(state.groups.length), color:state.palette[state.groups.length%10], members:active.slice(i, i+2)});
+        }
+    } 
+    else if (state.mode === 'jigsaw') {
+        let exp = Array.from({length: count}, () => []);
+        active.forEach((s, i) => exp[i % count].push(s));
+        
+        let baseCount = Math.min(...exp.map(g => g.length));
+        let base = Array.from({length: baseCount}, () => []);
+        
+        exp.forEach((eg, eIdx) => {
+            const eLabel = getLabel(eIdx, "E");
+            eg.forEach((student, sIdx) => {
+                let tBase = (sIdx + eIdx) % baseCount;
+                student._expLabel = eLabel; student._baseLabel = `S${tBase+1}`;
+                base[tBase].push(student);
+            });
+        });
+        
+        state.expertGroups = exp.map((m,i) => ({ id:`e_${i}`, label: getLabel(i, "E"), color: state.palette[i%10], members: m }));
+        state.groups = base.map((m,i) => ({ id:`b_${i}`, label: `Stamm ${i+1}`, color: state.palette[(i+5)%10], members: m }));
+        
+        if (isManual && document.querySelector('input[name="jigsaw-phase"][value="expert"]')) {
+            document.querySelector('input[name="jigsaw-phase"][value="expert"]').checked = true;
+        }
+    }
+    else {
+        let chunks = Array.from({length: count}, () => []);
+        active.forEach((s, i) => chunks[i % count].push(s));
+        state.groups = chunks.map((c, i) => ({ id:`g_${i}`, label:getLabel(i), color:state.palette[i%10], members:c }));
+    }
+
+    if (!isManual) {
+        state.groups.forEach((g, i) => { if(oldBase[i]) { g.label = oldBase[i].label; g.color = oldBase[i].color; g.id = oldBase[i].id; } });
+        state.expertGroups.forEach((g, i) => { if(oldExp[i]) { g.label = oldExp[i].label; g.color = oldExp[i].color; g.id = oldExp[i].id; } });
+    }
+
+    renderGroups();
+    
+    if (isManual) {
+        validateGroups(state.groups, false);
+    }
+
+    if (!isManual && document.querySelectorAll('.cluster-label').length > 0) {
+        assignDesks();
+    }
+}
+
+function renderGroups() {
+    const container = document.getElementById('group-results');
+    container.innerHTML = '';
+    const showLbl = document.getElementById('show-jigsaw-labels').checked;
+
+    const buildCard = (g, isExp=false) => {
+        let html = `<div class="group-card" style="border-color:${g.color}">
+            <h4><input type="text" value="${g.label}" style="border:none; font-weight:bold; width:100%;" onchange="updateGroupName('${g.id}', this.value, ${isExp})"></h4>
+            <div class="group-members">`;
+        g.members.forEach(m => {
+            let meta = "";
+            if(state.mode === 'jigsaw' && showLbl) {
+                meta = isExp ? `(-> ${m._baseLabel})` : `(<- ${m._expLabel})`;
+            }
+            if(state.mode === 'random') {
+                html += `<span>• ${m.name}</span>`;
             } else {
-                flushBuffer();
-                result.push({ title: prefix + label, students: [...group] });
+                html += `<div class="student-item" onclick="openMoveModal('${m.id}', '${g.id}', ${isExp})">
+                            <span>${m.name} <small style="color:gray">${meta}</small></span>
+                         </div>`;
             }
         });
-        flushBuffer(); 
-        return result;
-    }
+        html += `</div></div>`;
+        return html;
+    };
 
-    function buildFormattedHTML(title, formattedGroups, showExpertTag, showTargetTag) {
-        let html = `<h3>${title}</h3><div class="group-container">`;
-        formattedGroups.forEach(g => {
-            html += `<div class="group-box"><h4>${g.title}</h4><ul>`;
-            g.students.forEach(s => {
-                let tags = [];
-                if (showExpertTag && s.expertTag) tags.push(s.expertTag);
-                if (showTargetTag && s.homeTag) tags.push(`-> ${s.homeTag}`);
-                const tagStr = tags.length > 0 ? ` <span class="expert-tag">(${tags.join(' | ')})</span>` : '';
-                html += `<li>${s.displayName}${tagStr}</li>`;
-            });
-            html += `</ul></div>`;
+    if(state.mode === 'jigsaw') {
+        let h = `<div class="jigsaw-container">
+            <div><h3 style="margin-top:0">Expertengruppen</h3><div style="display:flex; gap:10px; flex-wrap:wrap;">`;
+        state.expertGroups.forEach(g => h += buildCard(g, true));
+        h += `</div></div><div><h3>Stammgruppen</h3><div style="display:flex; gap:10px; flex-wrap:wrap;">`;
+        state.groups.forEach(g => h += buildCard(g, false));
+        h += `</div></div></div>`;
+        container.innerHTML = h;
+    } else {
+        state.groups.forEach(g => container.innerHTML += buildCard(g, false));
+    }
+}
+
+function updateGroupName(id, val, isExp) {
+    let arr = isExp ? state.expertGroups : state.groups;
+    let g = arr.find(x => x.id === id);
+    if(g) g.label = val;
+    let lbl = document.querySelector(`.cluster-label[data-id="${id}"] input[type="text"]`);
+    if(lbl) lbl.value = val;
+    
+    if (state.mode === 'jigsaw') {
+        g.members.forEach(m => {
+            if (isExp) m._expLabel = val;
+            else m._baseLabel = val;
         });
-        return html + `</div>`;
+        renderGroups(); 
     }
+}
 
-    function renderGroups(isNewGeneration = false) {
-        const active = students.filter(s => s.active).sort((a, b) => a.randomOrder - b.randomOrder);
-        const mode = document.getElementById('mode').value;
-        const naming1 = document.getElementById('naming1').value; 
-        let outputDiv = document.getElementById('output');
+function openMoveModal(studentId, groupId, isExp) {
+    if(state.mode === 'random') return;
+    moveContext = { studentId, groupId, isExp };
+    
+    const arr = isExp ? state.expertGroups : state.groups;
+    const student = state.students.find(s => s.id === studentId);
+    
+    document.getElementById('move-student-name').innerText = student.name;
+    
+    const select = document.getElementById('move-target-group');
+    select.innerHTML = '';
+    arr.forEach(g => {
+        if (g.id !== groupId) {
+            let opt = document.createElement('option');
+            opt.value = g.id;
+            opt.text = g.label;
+            select.appendChild(opt);
+        }
+    });
+    
+    document.getElementById('move-modal').style.display = 'flex';
+}
+
+function closeMoveModal() {
+    document.getElementById('move-modal').style.display = 'none';
+    moveContext = null;
+}
+
+function confirmMove() {
+    if(!moveContext) return;
+    const targetId = document.getElementById('move-target-group').value;
+    const arr = moveContext.isExp ? state.expertGroups : state.groups;
+    
+    const sourceGroup = arr.find(g => g.id === moveContext.groupId);
+    const targetGroup = arr.find(g => g.id === targetId);
+    
+    if(!sourceGroup || !targetGroup) return;
+    
+    const sIndex = sourceGroup.members.findIndex(m => m.id === moveContext.studentId);
+    if(sIndex > -1) {
+        const student = sourceGroup.members.splice(sIndex, 1)[0];
         
-        if (active.length === 0) {
-            outputDiv.innerHTML = "Keine aktiven Personen.";
-            isBreachedState = false;
+        if (state.mode === 'jigsaw') {
+            if (moveContext.isExp) student._expLabel = targetGroup.label;
+            else student._baseLabel = targetGroup.label;
+        }
+        
+        targetGroup.members.push(student);
+    }
+    
+    closeMoveModal();
+    validateGroups(arr, true);
+    renderGroups();
+    
+    if(document.querySelectorAll('.cluster-label').length > 0) {
+        assignDesks();
+    }
+}
+
+// --- 3. RAUMPLANER ---
+const canvas = document.getElementById('canvas');
+let draggedElements = [], isDragging = false, startX, startY, selectionBox = null, selStartX, selStartY;
+
+canvas.addEventListener('mousedown', (e) => {
+    if(e.target.tagName === 'INPUT' || e.target.contentEditable==="true") return;
+    const obj = e.target.closest('.planner-obj') || e.target.closest('.cluster-label');
+    if (obj) {
+        isDragging = true; startX = e.clientX; startY = e.clientY;
+        if (!e.ctrlKey && !obj.classList.contains('selected')) {
+            document.querySelectorAll('.selected').forEach(el=>el.classList.remove('selected'));
+            obj.classList.add('selected');
+        } else if (e.ctrlKey) { obj.classList.toggle('selected'); }
+        
+        draggedElements = Array.from(document.querySelectorAll('.selected, .cluster-label.dragging')).map(el => ({
+            el, initX: parseFloat(el.style.left)||0, initY: parseFloat(el.style.top)||0
+        }));
+        if(draggedElements.length === 0) draggedElements = [{ el: obj, initX: parseFloat(obj.style.left)||0, initY: parseFloat(obj.style.top)||0 }];
+    } else {
+        document.querySelectorAll('.selected').forEach(el=>el.classList.remove('selected'));
+        selStartX = e.clientX; selStartY = e.clientY;
+        selectionBox = document.createElement('div'); selectionBox.className = 'selection-box';
+        canvas.appendChild(selectionBox);
+    }
+});
+
+canvas.addEventListener('mousemove', (e) => {
+    if (isDragging && draggedElements.length > 0) {
+        const dx = e.clientX - startX, dy = e.clientY - startY;
+        draggedElements.forEach(item => { item.el.style.left = `${item.initX + dx}px`; item.el.style.top = `${item.initY + dy}px`; });
+    } else if (selectionBox) {
+        const rect = canvas.getBoundingClientRect();
+        const curX = e.clientX - rect.left, curY = e.clientY - rect.top;
+        selectionBox.style.left = Math.min(curX, selStartX - rect.left) + 'px';
+        selectionBox.style.top = Math.min(curY, selStartY - rect.top) + 'px';
+        selectionBox.style.width = Math.abs(curX - (selStartX - rect.left)) + 'px';
+        selectionBox.style.height = Math.abs(curY - (selStartY - rect.top)) + 'px';
+    }
+});
+
+canvas.addEventListener('mouseup', (e) => {
+    if (isDragging) {
+        const allDesks = Array.from(document.querySelectorAll('.desk:not(.selected)'));
+        draggedElements.forEach(item => {
+            if(!item.el.classList.contains('desk')) return;
+            const r1 = item.el.getBoundingClientRect();
+            for(let desk of allDesks) {
+                const r2 = desk.getBoundingClientRect();
+                if (Math.abs(r1.right - r2.left) < 5 && Math.abs(r1.top - r2.top) < 20) { item.el.style.left = `${parseFloat(desk.style.left) - r1.width}px`; item.el.style.top = desk.style.top; break; }
+                if (Math.abs(r1.left - r2.right) < 5 && Math.abs(r1.top - r2.top) < 20) { item.el.style.left = `${parseFloat(desk.style.left) + r2.width}px`; item.el.style.top = desk.style.top; break; }
+                if (Math.abs(r1.bottom - r2.top) < 5 && Math.abs(r1.left - r2.left) < 20) { item.el.style.top = `${parseFloat(desk.style.top) - r1.height}px`; item.el.style.left = desk.style.left; break; }
+                if (Math.abs(r1.top - r2.bottom) < 5 && Math.abs(r1.left - r2.left) < 20) { item.el.style.top = `${parseFloat(desk.style.top) + r2.height}px`; item.el.style.left = desk.style.left; break; }
+            }
+        });
+        isDragging = false; draggedElements = [];
+    } else if (selectionBox) {
+        const sRect = selectionBox.getBoundingClientRect();
+        document.querySelectorAll('.planner-obj').forEach(obj => {
+            const oRect = obj.getBoundingClientRect();
+            if (!(sRect.right < oRect.left || sRect.left > oRect.right || sRect.bottom < oRect.top || sRect.top > oRect.bottom)) obj.classList.add('selected');
+        });
+        selectionBox.remove(); selectionBox = null;
+    }
+});
+
+function addDesk() { addGeneric('', 100, 80, true); }
+function addGeneric(text, w, h, isDesk=false) {
+    const d = document.createElement('div');
+    d.className = `planner-obj ${isDesk ? 'desk' : ''}`;
+    d.style.width = w+'px'; d.style.height = h+'px'; d.style.left = '50px'; d.style.top = '50px';
+    d.ondblclick = function() { this.contentEditable = true; this.focus(); };
+    d.onblur = function() { this.contentEditable = false; };
+    
+    if(isDesk) d.innerHTML = `<div class="table-text" draggable="true" ondragstart="dragStudent(event)" ondragover="allowDrop(event)" ondrop="dropStudent(event)"></div>`;
+    else d.innerHTML = text;
+    canvas.appendChild(d);
+}
+
+function loadPreset() {
+    const toolbarHTML = document.querySelector('.toolbar').outerHTML;
+    canvas.innerHTML = toolbarHTML;
+    
+    addGeneric('Tafel', 200, 20); document.lastChild.style.left = '350px'; document.lastChild.style.top = '20px';
+    addGeneric('Lehrerpult', 150, 60); document.lastChild.style.left = '375px'; document.lastChild.style.top = '60px';
+    for(let i=0; i<4; i++) {
+        for(let j=0; j<4; j++) {
+            let d = document.createElement('div'); d.className='planner-obj desk'; d.style.width='100px'; d.style.height='80px';
+            d.style.left = `${150 + i*110}px`; d.style.top = `${200 + j*100}px`;
+            d.innerHTML = `<div class="table-text" draggable="true" ondragstart="dragStudent(event)" ondragover="allowDrop(event)" ondrop="dropStudent(event)"></div>`;
+            canvas.appendChild(d);
+        }
+    }
+}
+
+let draggedText = null;
+function dragStudent(e) { draggedText = e.target; e.dataTransfer.setData('text/plain', ''); }
+function allowDrop(e) { e.preventDefault(); }
+function dropStudent(e) {
+    e.preventDefault();
+    if (e.target.classList.contains('table-text')) {
+        let temp = e.target.innerHTML; e.target.innerHTML = draggedText.innerHTML; draggedText.innerHTML = temp;
+    }
+}
+
+function assignDesks() {
+    let sourceGroups = state.groups;
+    if(state.mode === 'jigsaw') {
+        const phaseInput = document.querySelector('input[name="jigsaw-phase"]:checked');
+        const phase = phaseInput ? phaseInput.value : 'expert';
+        sourceGroups = phase === 'expert' ? state.expertGroups : state.groups;
+    }
+    if(sourceGroups.length === 0) return;
+
+    const desks = Array.from(document.querySelectorAll('.desk'));
+    desks.forEach(d => { d.style.borderColor = ''; d.style.backgroundColor = 'white'; d.querySelector('.table-text').innerHTML = ''; });
+    document.querySelectorAll('.cluster-label').forEach(e => e.remove());
+    
+    let visited = new Set(), islands = [];
+    const isTouching = (d1, d2) => {
+        const r1 = d1.getBoundingClientRect(), r2 = d2.getBoundingClientRect();
+        return !(r1.right < r2.left-10 || r1.left > r2.right+10 || r1.bottom < r2.top-10 || r1.top > r2.bottom+10);
+    };
+
+    for (let i=0; i<desks.length; i++) {
+        if (visited.has(i)) continue;
+        let isl = [], q = [i]; visited.add(i);
+        while(q.length > 0) {
+            let curr = q.shift(); isl.push(desks[curr]);
+            for(let j=0; j<desks.length; j++) {
+                if(!visited.has(j) && isTouching(desks[curr], desks[j])) { visited.add(j); q.push(j); }
+            }
+        }
+        islands.push(isl);
+    }
+    islands.sort((a,b) => b.length - a.length);
+
+    let groupsToAssign = [...sourceGroups].sort((a,b) => b.members.length - a.members.length);
+    let unassigned = [];
+    
+    groupsToAssign.forEach(group => {
+        let tIdx = islands.findIndex(isl => isl.length >= group.members.length);
+        if (tIdx === -1) tIdx = 0; 
+        let target = islands[tIdx];
+        
+        if(!target) {
+            unassigned.push(group.label);
             return;
         }
 
-        if (mode === 'tandem') {
-            let logicalGroups = [];
-            for (let i = 0; i < active.length; i += 2) {
-                if (i + 1 < active.length) logicalGroups.push([active[i], active[i+1]]);
-                else logicalGroups[logicalGroups.length - 1].push(active[i]);
+        let minX = Infinity, minY = Infinity;
+        target.forEach((desk, i) => {
+            desk.style.borderColor = group.color; desk.style.backgroundColor = group.color + '33';
+            if(parseFloat(desk.style.left) < minX) minX = parseFloat(desk.style.left);
+            if(parseFloat(desk.style.top) < minY) minY = parseFloat(desk.style.top);
+            
+            let txt = desk.querySelector('.table-text');
+            if (i < group.members.length) txt.innerHTML = group.members[i].name;
+            if (i === target.length - 1 && group.members.length > target.length) {
+                for(let k=target.length; k<group.members.length; k++) txt.innerHTML += `<br>${group.members[k].name}`;
             }
-            const formatted = logicalGroups.map((g, i) => ({ title: "Tandem " + getGroupLabel(i, naming1), students: g }));
-            outputDiv.innerHTML = buildFormattedHTML("Tandems", formatted, false, false);
-            isBreachedState = false;
-            return;
-        } 
-        
-        const num = Math.max(2, parseInt(document.getElementById('groupCount').value) || 2);
-        const minSize = parseInt(document.getElementById('minSize').value) || 1;
-        const maxSize = parseInt(document.getElementById('maxSize').value) || 99;
-        
-        let warningMsg = "";
+        });
 
-        if (mode === 'simple') {
-            let logicalGroups = Array.from({length: num}, () => []);
-            active.forEach((s, i) => logicalGroups[i % num].push(s));
-            
-            const currentBreach = logicalGroups.some(g => g.length < minSize || g.length > maxSize);
-            
-            if (currentBreach) {
-                let msg = `Die mathematische Grundverteilung sprengt die eingestellten Limits (${minSize}-${maxSize} Personen). Die Gruppen wurden automatisch bestmöglich angepasst (zusammengelegt/geteilt).`;
-                
-                warningMsg = `<div class="alert-warning">
-                    ⚠️ <b>Hinweis zur Gruppengröße:</b> ${msg}
-                    <div style="margin-top: 15px; font-size: 13px; font-weight: normal; border-top: 1px solid #e6dbb9; padding-top: 10px;">
-                        <label class="checkbox-label" style="margin-bottom: 0;">
-                            <input type="checkbox" id="inlinePopupToggle" onchange="togglePopupPreference(this.checked)" ${showPopupWarning ? 'checked' : ''}> Warnungen als Pop-up anzeigen
-                        </label>
-                    </div>
-                </div>`;
-                
-                if (showPopupWarning && (isNewGeneration || !isBreachedState)) {
-                    showWarning(msg);
-                }
-            }
-            
-            isBreachedState = currentBreach;
-            const formatted = formatPhysicalGroups(logicalGroups, minSize, maxSize, "Gruppe ", naming1);
-            outputDiv.innerHTML = warningMsg + buildFormattedHTML("Gruppeneinteilung", formatted, false, false);
-            
-        } else if (mode === 'jigsaw') {
-            const naming2 = document.getElementById('naming2').value; 
-            const showTarget = document.getElementById('showTargetCheckbox').checked;
-
-            if (active.length < num) {
-                outputDiv.innerHTML = `<p style="color:#a00; font-weight:bold;">Fehler: Nicht genug Schüler! Es werden mindestens ${num} Schüler für ${num} Themengebiete benötigt.</p>`;
-                return;
-            }
-
-            let expert = Array.from({length: num}, () => []);
-            active.forEach((s, i) => {
-                const groupIndex = i % num;
-                s.expertTag = getGroupLabel(groupIndex, naming1);
-                expert[groupIndex].push(s);
-            });
-
-            const logicalMinSize = Math.min(...expert.map(g => g.length));
-            let home = Array.from({length: logicalMinSize}, () => []);
-            let extra = 0;
-            expert.forEach(ex => {
-                ex.forEach((s, i) => {
-                    let homeIdx = i < logicalMinSize ? i : extra % logicalMinSize;
-                    if (i >= logicalMinSize) extra++;
-                    s.homeTag = getGroupLabel(homeIdx, naming2);
-                    home[homeIdx].push(s);
-                });
-            });
-
-            const expViol = expert.some(g => g.length < minSize || g.length > maxSize);
-            const homViol = home.some(g => g.length < minSize || g.length > maxSize);
-            const currentBreach = expViol || homViol;
-            
-            if (currentBreach) {
-                let msg = `Die Vorgabe (${minSize}-${maxSize} Personen) konnte rechnerisch nicht überall eingehalten werden.<br><br><i>Wichtig:</i> Beim Gruppenpuzzle werden zu große Stammgruppen absichtlich <b>nicht geteilt</b>. Würde man sie trennen, fehlten in den neuen Gruppen Experten-Themen und das Puzzle ginge methodisch nicht mehr auf.`;
-
-                warningMsg = `<div class="alert-warning">
-                    ⚠️ <b>Hinweis zur Gruppengröße:</b><br>${msg}
-                    <div style="margin-top: 15px; font-size: 13px; font-weight: normal; border-top: 1px solid #e6dbb9; padding-top: 10px;">
-                        <label class="checkbox-label" style="margin-bottom: 0;">
-                            <input type="checkbox" id="inlinePopupToggle" onchange="togglePopupPreference(this.checked)" ${showPopupWarning ? 'checked' : ''}> Warnungen als Pop-up anzeigen
-                        </label>
-                    </div>
-                </div>`;
-
-                if (showPopupWarning && (isNewGeneration || !isBreachedState)) {
-                    showWarning(msg);
-                }
-            }
-
-            isBreachedState = currentBreach;
-            const formattedExperts = formatPhysicalGroups(expert, minSize, maxSize, "Thema ", naming1);
-            const formattedHome = home.map((g, i) => ({ title: "Stammgruppe " + getGroupLabel(i, naming2), students: g }));
-
-            outputDiv.innerHTML = 
-                warningMsg +
-                buildFormattedHTML("1. Expertengruppen", formattedExperts, false, showTarget) + 
-                "<hr>" + 
-                buildFormattedHTML("2. Stammgruppen", formattedHome, true, false);
-        }
+        const lbl = document.createElement('div'); lbl.className = 'cluster-label'; lbl.dataset.id = group.id;
+        lbl.style.left = `${minX}px`; lbl.style.top = `${minY - 20}px`;
+        lbl.innerHTML = `<span style="cursor:grab">⠿</span> <input type="text" value="${group.label}" onchange="updateGroupName('${group.id}', this.value, ${state.mode==='jigsaw' && document.querySelector('input[name="jigsaw-phase"]:checked').value==='expert'})"> 
+        <span style="position:relative; cursor:pointer" title="Farbe ändern">🖌️<input type="color" value="${rgb2hex(group.color)}" onchange="changeGroupColor('${group.id}', this.value)" style="top:0;left:0;width:100%;height:100%;"></span>`;
+        canvas.appendChild(lbl);
+        islands.splice(tIdx, 1);
+    });
+    
+    if (unassigned.length > 0) {
+        showWarning(`<strong>Zu wenige Tische!</strong><br><br>Für die folgenden Gruppen fehlen Tisch-Inseln:<br><b>${unassigned.join(', ')}</b><br><br>Bitte füge weitere Tische hinzu und schiebe sie zusammen.`, true);
     }
+}
 
-    function selectRandom() {
-        let tempActive = students.filter(s => s.active);
-        for (let i = tempActive.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [tempActive[i], tempActive[j]] = [tempActive[j], tempActive[i]];
-        }
-        const count = Math.min(parseInt(document.getElementById('randomCount').value), tempActive.length);
-        const selected = tempActive.slice(0, count);
-        let html = `<h3>Zufallsauswahl</h3><ol>`;
-        selected.forEach(s => html += `<li><b style="font-size: 1.2em;">${s.displayName}</b></li>`);
-        document.getElementById('output').innerHTML = html + `</ol>`;
+function rgb2hex(rgb) {
+    if(rgb.startsWith('#')) return rgb;
+    let a = rgb.split("(")[1].split(")")[0].split(",");
+    return "#" + a.map(x => parseInt(x).toString(16).padStart(2, '0')).join('');
+}
+function changeGroupColor(id, color) {
+    let g = state.groups.find(x=>x.id===id) || state.expertGroups.find(x=>x.id===id);
+    if(g) { g.color = color; assignDesks(); }
+}
+function formatSelected(prop, val) {
+    document.querySelectorAll('.selected').forEach(t => {
+        t.style[prop] = t.style[prop] === val ? '' : val;
+        let inner = t.querySelector('.table-text');
+        if(inner) inner.style[prop] = inner.style[prop] === val ? '' : val;
+    });
+}
+
+function saveRoom() {
+    const slot = document.getElementById('room-slot').value;
+    const cName = document.getElementById('class-name').value || 'default';
+    localStorage.setItem(`room_${cName}_${slot}`, canvas.innerHTML);
+    alert(`Raum in Slot ${slot} gespeichert!`);
+}
+function loadRoom() {
+    const slot = document.getElementById('room-slot').value;
+    const cName = document.getElementById('class-name').value || 'default';
+    const data = localStorage.getItem(`room_${cName}_${slot}`);
+    if(data) {
+        canvas.innerHTML = data;
+        document.querySelectorAll('.table-text').forEach(t => { t.ondragstart = dragStudent; t.ondragover = allowDrop; t.ondrop = dropStudent; });
+        document.querySelectorAll('.planner-obj').forEach(d => { d.ondblclick = function() { this.contentEditable = true; this.focus(); }; d.onblur = function() { this.contentEditable = false; }; });
+        
+        toggleModeOptions();
     }
+}
+
+function toggleLayout() { document.getElementById('app-main').classList.toggle('stacked'); }
+function togglePanel(id) { 
+    const p = document.getElementById(id);
+    p.style.display = (p.style.display === 'none' || p.style.display === '') ? 'block' : 'none';
+}
+
+function handleExport(val) {
+    if(!val) return;
+    if(val === 'print') window.print();
+    if(val === 'csv') {
+        let csv = "Gruppe,Name\n";
+        (state.expertGroups.length ? state.expertGroups : state.groups).forEach(g => g.members.forEach(m => csv += `${g.label},${m.name}\n`));
+        const a = document.createElement('a'); a.href = window.URL.createObjectURL(new Blob([csv], {type: 'text/csv'})); a.download = 'gruppen.csv'; a.click();
+    }
+    if(val === 'doc') {
+        const html = `<html><body><h1>Gruppen</h1>${document.getElementById('group-results').innerHTML}</body></html>`;
+        const a = document.createElement('a'); a.href = window.URL.createObjectURL(new Blob([html], {type: 'application/msword'})); a.download = 'gruppen.doc'; a.click();
+    }
+    document.getElementById('export-select').value = '';
+}
 </script>
 </body>
 </html>
