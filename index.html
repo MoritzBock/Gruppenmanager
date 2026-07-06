@@ -412,6 +412,24 @@ body.dark .help-doc .qs{background:#22324a;border-color:#33476a}
 .help-doc .tip{color:var(--ink-soft);font-size:12.5px}
 .help-doc code{background:var(--hover);border-radius:4px;padding:0 4px;font-size:12.5px}
 
+/* Barrierearmut: deutlicher Tastatur-Fokus */
+button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible,
+[contenteditable]:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--primary);outline-offset:2px}
+/* Größere Tippflächen auf Touch-Geräten (digitale Tafel / Touch-Laptop) */
+@media (pointer:coarse){
+  .header button,button.sm{min-height:42px}
+  button.xs{min-height:38px;padding:6px 10px}
+  select,input[type=text],input[type=number],input[type=password],input[type=date],textarea{min-height:42px}
+  .badge{padding:7px 14px;font-size:13px}
+  .lvl-row .det,.adminx{min-height:34px;min-width:34px}
+  .gear{font-size:18px;opacity:.65}
+}
+/* Backup-Erinnerung */
+#backup-reminder{display:none;align-items:center;gap:10px;padding:8px 16px;background:#fff8e8;border-bottom:1px solid #f0d39a;color:#7a5b00;font-size:13px}
+body.dark #backup-reminder{background:#2a2410;border-color:#7a5b00;color:#f0d39a}
+#backup-reminder.show{display:flex}
+#backup-reminder .sp{flex:1}
+
 /* Lautstärke-Widget (frei beweglich, resizable, koexistiert mit Timer) */
 #vol-widget{position:fixed;top:80px;right:24px;z-index:2500;width:200px;height:230px;background:var(--panel);border:1px solid var(--border);
   border-radius:14px;box-shadow:0 8px 30px rgba(0,0,0,.25);display:none;flex-direction:column;padding:8px;resize:both;overflow:hidden;min-width:150px;min-height:180px}
@@ -471,6 +489,14 @@ body.dark .help-doc .qs{background:#22324a;border-color:#33476a}
     <option value="plan">Sitzplan drucken</option>
     <option value="sheet">Stundenblatt (alles) drucken</option>
   </select>
+</div>
+
+<div id="backup-reminder">
+  <span>💾 Erinnerung: Deine Daten liegen nur lokal auf diesem Gerät und wurden länger nicht gesichert.</span>
+  <span class="sp"></span>
+  <button class="sm" onclick="exportAll();hideBackupReminder()">⬇ Jetzt sichern</button>
+  <button class="ghost sm" onclick="snoozeBackupReminder()">Später</button>
+  <button class="ghost sm" onclick="hideBackupReminder()" title="Schließen">✕</button>
 </div>
 
 <div class="app" id="app">
@@ -919,7 +945,9 @@ body.dark .help-doc .qs{background:#22324a;border-color:#33476a}
 
 <div class="modal keep-open" id="modal-random">
   <div class="box display">
-    <div class="admin-head"><h4>🎲 Zufall</h4><button class="ghost sm" onclick="closeModal('modal-random')">✕ Schließen</button></div>
+    <div class="admin-head"><h4>🎲 Zufall</h4>
+      <div style="display:flex;gap:6px"><button class="ghost sm" id="rnd-sound" onclick="toggleRndSound()" title="Ton an/aus">🔊</button>
+        <button class="ghost sm" onclick="closeModal('modal-random')">✕ Schließen</button></div></div>
     <div class="rnd-tabs">
       <button class="ghost sm active" data-rnd="wheel" onclick="rndTab('wheel')">🎡 Glücksrad</button>
       <button class="ghost sm" data-rnd="dice" onclick="rndTab('dice')">🎲 Würfel</button>
@@ -2856,6 +2884,7 @@ function exportAll(){
     else if (k.startsWith('gm_room_')) data.rooms[k.slice(8)] = localStorage.getItem(k);
   });
   download(JSON.stringify(data,null,2), `klassenmanager-backup_${new Date().toISOString().slice(0,10)}.json`, 'application/json');
+  localStorage.setItem('gm_lastBackup', String(Date.now()));
   toast('Sicherung exportiert.');
 }
 function importAll(file){
@@ -2955,7 +2984,7 @@ $('student-input').addEventListener('input', () => { clearTimeout(parseT); parse
 function handleTool(v){
   if (v === 'phases') openModal('modal-phases');
   if (v === 'rubric'){ renderRubric(); openModal('modal-rubric'); }
-  if (v === 'random'){ drawWheel(); resetDie(); openModal('modal-random'); }
+  if (v === 'random'){ drawWheel(); resetDie(); const sb=$('rnd-sound'); if (sb) sb.textContent = rndSoundOn()?'🔊':'🔇'; openModal('modal-random'); }
   if (v === 'volume') openVolume();
   if (v === 'media')  openModal('modal-media');
   if (v === 'timetable'){ renderTimetable(); openModal('modal-timetable'); }
@@ -3496,6 +3525,7 @@ function spinWheel(){
   wheelAngle += (360 - (wheelAngle % 360)) + (5*360 - segCenter);
   const g = document.getElementById('wheel-g'); if (g) g.style.transform = `rotate(${wheelAngle}deg)`;
   $('wheel-name').textContent = '…';
+  sndWheel();
   setTimeout(() => { pick.called = (pick.called||0)+1; $('wheel-name').textContent = pick.name; }, 3500);
 }
 /* ---- Würfel: echte Würfel-Designs (d2,d3,d6,d10,d20,d100) + Wurf-Animation ---- */
@@ -3543,10 +3573,15 @@ function rollDice(){
   stage.classList.toggle('is-cube', isCube); stage.classList.toggle('is-flat', !isCube);
   $('dice-result').textContent = '';
   stage.classList.remove('rolling'); void stage.offsetWidth; stage.classList.add('rolling');
-  clearInterval(diceInt); clearTimeout(diceTO);
-  if (isCube) stage.innerHTML = renderDie(type, v);                                  // 3D-Würfel: echte Rotation der festen Augen
-  else diceInt = setInterval(() => { stage.innerHTML = renderDie(type, 1 + Math.floor(Math.random()*max)); }, 80);   // Flachwürfel: Zahlen laufen durch
-  diceTO = setTimeout(() => { clearInterval(diceInt); stage.classList.remove('rolling'); stage.innerHTML = renderDie(type, v); $('dice-result').textContent = '🎲 ' + v; }, 1000);
+  clearTimeout(diceInt); clearTimeout(diceTO);
+  sndDice();
+  if (isCube) stage.innerHTML = renderDie(type, v);          // 3D-Würfel: echte Rotation der festen Augen
+  else {                                                     // Flachwürfel: Zahlen laufen durch, werden langsamer (Feinschliff)
+    let delay = 50;
+    const tick = () => { stage.innerHTML = renderDie(type, 1 + Math.floor(Math.random()*max)); delay += Math.round(delay*0.14) + 5; if (delay < 170) diceInt = setTimeout(tick, delay); };
+    diceInt = setTimeout(tick, delay);
+  }
+  diceTO = setTimeout(() => { clearTimeout(diceInt); stage.classList.remove('rolling'); stage.innerHTML = renderDie(type, v); $('dice-result').textContent = '🎲 ' + v; }, 1000);
 }
 /* ---- Münze: 3D-Wurf ---- */
 let coinTurns = 0;
@@ -3556,9 +3591,55 @@ function flipCoin(){
   coin.style.transform = `rotateY(${coinTurns*360 + (heads?0:180)}deg)`;   // landet auf Kopf bzw. Zahl
   wrap.classList.remove('toss'); void wrap.offsetWidth; wrap.classList.add('toss');
   $('coin-result').textContent = '';
+  sndCoin();
   setTimeout(() => { $('coin-result').textContent = heads ? '👑 Kopf' : '⭐ Zahl'; }, 1150);
 }
-function askYesNo(){ $('yn-face').textContent = Math.random()<0.5 ? '✅ Ja' : '❌ Nein'; }
+function askYesNo(){ const yes = Math.random()<0.5; $('yn-face').textContent = yes ? '✅ Ja' : '❌ Nein'; yes ? sndYes() : sndNo(); }
+
+/* ---- Sounds für Würfel/Münze (nutzt den geteilten AudioContext) ---- */
+const rndSoundOn = () => localStorage.getItem('gm_rndSound') !== 'off';
+function toggleRndSound(){ localStorage.setItem('gm_rndSound', rndSoundOn() ? 'off' : 'on'); const b = $('rnd-sound'); if (b) b.textContent = rndSoundOn() ? '🔊' : '🔇'; }
+function sndDice(){
+  if (!rndSoundOn()) return; const ac = getAudio(); if (!ac) return; const t0 = ac.currentTime;
+  for (let i=0;i<6;i++){ const t = t0 + i*0.1 + Math.random()*0.025;        // Klappern, abnehmend
+    const o = ac.createOscillator(), g = ac.createGain(); o.type='square'; o.frequency.value = 130 + Math.random()*200; o.connect(g); g.connect(ac.destination);
+    g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(Math.max(0.02,0.13-i*0.013),t+0.005); g.gain.exponentialRampToValueAtTime(0.0001,t+0.06); o.start(t); o.stop(t+0.07); }
+}
+function sndCoin(){
+  if (!rndSoundOn()) return; const ac = getAudio(); if (!ac) return; const t = ac.currentTime;
+  [[1320,t],[1760,t+0.05]].forEach(([f,tt]) => { const o = ac.createOscillator(), g = ac.createGain();   // heller „Ding" mit Nachklang
+    o.type='triangle'; o.frequency.value=f; o.connect(g); g.connect(ac.destination);
+    g.gain.setValueAtTime(0.0001,tt); g.gain.exponentialRampToValueAtTime(0.28,tt+0.01); g.gain.exponentialRampToValueAtTime(0.0001,tt+0.55); o.start(tt); o.stop(tt+0.6); });
+}
+function wheelTick(ac, t){ const o = ac.createOscillator(), g = ac.createGain();
+  o.type='square'; o.frequency.value = 880 + Math.random()*240; o.connect(g); g.connect(ac.destination);
+  g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.06,t+0.002); g.gain.exponentialRampToValueAtTime(0.0001,t+0.028); o.start(t); o.stop(t+0.032); }
+function sndWheel(){
+  if (!rndSoundOn()) return; const ac = getAudio(); if (!ac) return;
+  let t = ac.currentTime + 0.02, gap = 0.045, end = ac.currentTime + 3.3;   // Rattern, das langsamer wird (Rad läuft aus)
+  while (t < end){ wheelTick(ac, t); t += gap; gap *= 1.085; }
+}
+function sndYes(){   // „Pling" (steigend, hell) für Ja/Richtig
+  if (!rndSoundOn()) return; const ac = getAudio(); if (!ac) return; const t = ac.currentTime;
+  [[880,t],[1320,t+0.09]].forEach(([f,tt]) => { const o = ac.createOscillator(), g = ac.createGain(); o.type='sine'; o.frequency.value=f;
+    o.connect(g); g.connect(ac.destination); g.gain.setValueAtTime(0.0001,tt); g.gain.exponentialRampToValueAtTime(0.3,tt+0.01); g.gain.exponentialRampToValueAtTime(0.0001,tt+0.4); o.start(tt); o.stop(tt+0.45); });
+}
+function sndNo(){    // „Mööp" (tiefer Summer, absteigend) für Nein/Falsch
+  if (!rndSoundOn()) return; const ac = getAudio(); if (!ac) return; const t = ac.currentTime;
+  [[233,t],[180,t+0.2]].forEach(([f,tt]) => { const o = ac.createOscillator(), g = ac.createGain(); o.type='sawtooth'; o.frequency.value=f;
+    o.connect(g); g.connect(ac.destination); g.gain.setValueAtTime(0.0001,tt); g.gain.exponentialRampToValueAtTime(0.22,tt+0.02); g.gain.exponentialRampToValueAtTime(0.0001,tt+0.32); o.start(tt); o.stop(tt+0.34); });
+}
+
+/* ---- Backup-Erinnerung (lokale Daten regelmäßig sichern) ---- */
+function checkBackupReminder(){
+  if (!listClasses().length) return;                                  // nur wenn es gespeicherte Klassen gibt
+  const last = parseInt(localStorage.getItem('gm_lastBackup')||'0');
+  const snooze = parseInt(localStorage.getItem('gm_backupSnooze')||'0');
+  const week = 7*24*3600*1000;
+  if (Date.now() > snooze && (Date.now() - last) > week) $('backup-reminder').classList.add('show');
+}
+function hideBackupReminder(){ $('backup-reminder').classList.remove('show'); }
+function snoozeBackupReminder(){ localStorage.setItem('gm_backupSnooze', String(Date.now() + 3*24*3600*1000)); hideBackupReminder(); }
 
 /* ---- Stundenplan (Woche, global) ---- */
 const TT_DAYS = ['Mo','Di','Mi','Do','Fr'], TT_PERIODS = 8;
@@ -3625,6 +3706,7 @@ function init() {
   initWindowDrag();
   renderGroups();
   restoreAutosave();   // letzte Sitzung automatisch wiederherstellen
+  checkBackupReminder();
   // Beim allerersten Start (ohne Daten) die Anleitung zeigen.
   if (!localStorage.getItem('gm_helpSeen')){ localStorage.setItem('gm_helpSeen','1'); if (!state.students.length && !listClasses().length && !pinSet()) openHelp(); }
 }
